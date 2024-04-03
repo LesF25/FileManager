@@ -5,7 +5,6 @@
 */
 
 #pragma once
-#include "loginwindow.h"
 #include "filecontentwindow.h"
 #include <createwindows.h>
 
@@ -14,16 +13,14 @@
 #include <QLineEdit>
 #include <QVBoxLayout>
 #include <QPushButton>
-#include <QComboBox>
 #include <QList>
-#include <memory>
 
 class MainWindow : public QWidget
 {
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
+    MainWindow(QString username, QWidget *parent = nullptr);
     ~MainWindow();
 
 private:
@@ -37,11 +34,9 @@ private:
     QPushButton* _btCreateFile;
     QPushButton* _btCreateFolder;
     QPushButton* _btDelete;
-    QPushButton* _btExitAccount;
     QPushButton* _btBackFolder;
     QPushButton* _btForwardFolder;
 
-    LoginWindow* _wndLogin;
     FileContentWindow* _wndFileContent;
     CreateFileWindow* _wndCreateFile;
     CreateFolderWindow* _wndCreateFolder;
@@ -50,9 +45,13 @@ signals:
     void sendCurrentFile(QString);
     void openFile();
     void openFolder();
-
     void signCreateFile(QString);
     void signCreateFolder(QString);
+
+    void signLoggingCreateFolder(QString);
+    void signLoggingCreateFile(QString);
+    void signLoggingChangeFile(QString);
+    void signLoggingDeleteElement(QString);
 
 private slots:
     void createFile();                                  // _btCreateFile
@@ -61,17 +60,15 @@ private slots:
     void createFolder();                                // _btCreateFolder
     void displayFolder(QString);
     void deleteElement();                               // _btDelete
-    void exitAccount();                                 // _btExitAccount
     void moveFolder(QListWidgetItem*);                  // _list
     void moveBackFolder();                              // _btBackFolder
     void moveForwardFolder();                           // _btForwardFolder
 
-    void rcvConnectLogIn(QString);
     void rcvConnectCloseFile();
     void rcvConnectSaveFile(QString);
 
 private:
-    void initStyleLabel(QLabel* label, int width, Qt::AlignmentFlag flag);
+    void displayContent();
     QString getFullPath();
 };
 

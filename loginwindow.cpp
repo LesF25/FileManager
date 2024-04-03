@@ -100,8 +100,8 @@ LoginWindow::LoginWindow(QWidget *parent)
     _ltMain->addLayout(ltControlTools);
 
     //==========================================
-    connect(_btSignUp, &QPushButton::clicked, this, &LoginWindow::signUp);
-    connect(_btSignIn, &QPushButton::clicked, this, &LoginWindow::signIn);
+    connect(_btSignUp, &QPushButton::clicked, this, signUp);
+    connect(_btSignIn, &QPushButton::clicked, this, signIn);
 }
 
 void LoginWindow::signUp()

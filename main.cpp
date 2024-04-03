@@ -1,11 +1,13 @@
-#include "MainWindow.h"
+#include "proxy.h"
 
 #include <QApplication>
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    MainWindow w;
-    w.show();
+
+    IService* service = new Proxy(nullptr);
+    service->start();
+
     return a.exec();
 }
