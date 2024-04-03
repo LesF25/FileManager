@@ -19,14 +19,17 @@
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 
-MainWindow::MainWindow(QWidget *parent)
-    : QWidget(parent)
+MainWindow::MainWindow(QString username, QWidget *parent)
+    : QWidget(parent), _username(username)
 {
+    _currentPath.push_back("C:/Users/getd8/Desktop/FileManager/users/" + _username + "/");
+    _forwardFolderPath.push_back("C:/Users/getd8/Desktop/FileManager/users/" + _username + "/");
+
+    // ==============================================
     _ltMain = new QVBoxLayout();
     this->setLayout(_ltMain);
     this->setFixedSize(400, 350);
 
-    _wndLogin = new LoginWindow();
     _wndFileContent = new FileContentWindow();
     _wndCreateFile = new CreateFileWindow();
     _wndCreateFolder = new CreateFolderWindow();
@@ -40,7 +43,6 @@ MainWindow::MainWindow(QWidget *parent)
     _edCurrentFolder->setReadOnly(true);
     _edCurrentFolder->setPlaceholderText("Log in to your account.");
     _edCurrentFolder->setFixedHeight(30);
-    //    _edCurrentFolder->setFont();
 
     ltHeader->addWidget(_edCurrentFolder);
 
@@ -59,12 +61,7 @@ MainWindow::MainWindow(QWidget *parent)
     _btCreateFolder = new QPushButton("Create Folder", this);
     _btDelete = new QPushButton("Delete", this);
 
-    _btCreateFile->setEnabled(false);
-    _btCreateFolder->setEnabled(false);
-    _btDelete->setEnabled(false);
-
     QHBoxLayout* ltNavigation = new QHBoxLayout();
-    _btExitAccount = new QPushButton("Exit Account", this);
     _btBackFolder = new QPushButton(this);
     _btBackFolder->setIcon(QIcon(":/resource/icons/arrowBack.png"));
     _btForwardFolder = new QPushButton(this);
@@ -78,7 +75,6 @@ MainWindow::MainWindow(QWidget *parent)
     ltFile->addWidget(_btCreateFolder);
 
     ltNavigation->addWidget(_btBackFolder);
-    ltNavigation->addWidget(_btExitAccount);
     ltNavigation->addWidget(_btForwardFolder);
 
     ltFooter->addLayout(ltFile);
@@ -89,7 +85,7 @@ MainWindow::MainWindow(QWidget *parent)
     _ltMain->addLayout(ltBody);
     _ltMain->addLayout(ltFooter);
 
-    connect(_btExitAccount, &QPushButton::clicked, this, &MainWindow::exitAccount);
+    displayContent();
 
     connect(_btCreateFile, &QPushButton::clicked, this, &MainWindow::createFile);
     connect(this, &MainWindow::signCreateFile, _wndCreateFile, &CreateFileWindow::rcvConnect);
@@ -106,11 +102,28 @@ MainWindow::MainWindow(QWidget *parent)
     connect(_btBackFolder, &QPushButton::clicked, this, &MainWindow::moveBackFolder);
     connect(_btForwardFolder, &QPushButton::clicked, this, &MainWindow::moveForwardFolder);
 
-    connect(_wndLogin, &LoginWindow::logIn, this, &MainWindow::rcvConnectLogIn);
     connect(_wndFileContent, &FileContentWindow::fileSaved, this, &MainWindow::rcvConnectSaveFile);
     connect(_wndFileContent, &FileContentWindow::fileClose, this, &MainWindow::rcvConnectCloseFile);
     connect(this, &MainWindow::sendCurrentFile, _wndFileContent, &FileContentWindow::rcvCurrentFile);
     connect(this, &MainWindow::openFile, this, &MainWindow::changeFile);
+}
+
+void MainWindow::displayContent()
+{
+    QString path = getFullPath();
+
+    _edCurrentFolder->setText(path);
+    QDir dir(path);
+    QFileInfoList list = dir.entryInfoList();
+
+    for (int i = 2; i < list.size(); ++i)
+    {
+        QFileInfo fileInfo = list.at(i);
+        if (fileInfo.isFile())
+            _listFolderContents->addItem(fileInfo.fileName());
+        else
+            _listFolderContents->addItem(fileInfo.fileName());
+    }
 }
 
 void MainWindow::createFile()
@@ -250,6 +263,7 @@ void MainWindow::displayFile(QString path)
 void MainWindow::displayFolder(QString folderName)
 {
     _listFolderContents->addItem(folderName);
+    emit signLoggingCreateFolder(getFullPath() + folderName + "/");
     this->show();
 }
 
@@ -283,8 +297,8 @@ void MainWindow::deleteElement()
     QFileInfo infoFile(file);
     if (file.exists() && infoFile.isFile())
     {
+        emit signLoggingDeleteElement(path);
         file.remove();
-
         QListWidgetItem *item = _listFolderContents->item(_listFolderContents->currentRow());
         if (!item)
         {
@@ -299,6 +313,8 @@ void MainWindow::deleteElement()
     QFileInfo infoDir(path);
     if (dir.exists() && infoDir.isDir())
     {
+        emit signLoggingDeleteElement(path + "/");
+
         dir.removeRecursively();
         QListWidgetItem *item = _listFolderContents->item(_listFolderContents->currentRow());
         if (!item)
@@ -313,45 +329,6 @@ void MainWindow::deleteElement()
 
     QMessageBox::warning(0, "Error", "File doesn't exists");
     return;
-}
-
-void MainWindow::exitAccount()
-{
-    _edCurrentFolder->clear();
-    _currentPath.clear();
-    _listFolderContents->clear();
-
-    _wndLogin->show();
-    this->close();
-}
-
-void MainWindow::rcvConnectLogIn(QString username)
-{
-    _username = username;
-    _currentPath.push_back("C:/Users/getd8/Desktop/FileManager/users/" + _username + "/");
-    _forwardFolderPath.push_back("C:/Users/getd8/Desktop/FileManager/users/" + _username + "/");
-
-    QString path = getFullPath();
-
-    _edCurrentFolder->setText(path);
-    QDir dir(path);
-    QFileInfoList list = dir.entryInfoList();
-
-    for (int i = 2; i < list.size(); ++i)
-    {
-        QFileInfo fileInfo = list.at(i);
-        if (fileInfo.isFile())
-            _listFolderContents->addItem(fileInfo.fileName());
-        else
-            _listFolderContents->addItem(fileInfo.fileName());
-    }
-
-    _btCreateFile->setEnabled(true);
-    _btCreateFolder->setEnabled(true);
-    _btDelete->setEnabled(true);
-    //    _btForwardFolder->setEnabled(true);
-
-    this->show();
 }
 
 void MainWindow::rcvConnectCloseFile()
@@ -370,8 +347,14 @@ void MainWindow::rcvConnectSaveFile(QString fileName)
             flag = false;
     }
 
+    QString path = getFullPath();
     if (flag)
+    {
         _listFolderContents->addItem(fileName);
+        emit signLoggingCreateFile(path + fileName);
+    }
+    else
+        emit signLoggingChangeFile(path + fileName);
 
     this->show();
 }
@@ -390,5 +373,4 @@ MainWindow::~MainWindow()
     delete _wndCreateFile;
     delete _wndCreateFolder;
     delete _wndFileContent;
-    delete _wndLogin;
 }
