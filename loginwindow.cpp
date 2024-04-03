@@ -16,35 +16,11 @@ LoginWindow::LoginWindow(QWidget *parent)
     if (!_dir.exists(path))
         _dir.mkdir(path);
 
+    _identityMap = new IdentityMap();
+
     _ltMain = new QVBoxLayout();
     this->setLayout(_ltMain);
     this->setFixedSize(340, 215);
-
-    //==================================================
-
-    _dbUsers = QSqlDatabase::addDatabase("QSQLITE");
-    _dbUsers.setDatabaseName("C:/Users/getd8/Desktop/FileManager/users.db");
-    bool checkOpen = _dbUsers.open();
-
-    if (!checkOpen)
-    {
-        QMessageBox::warning(0, "Error", _dbUsers.lastError().text());
-        return;
-    }
-
-    _dbUsers.transaction();
-
-    QSqlQuery* query = new QSqlQuery(_dbUsers);
-    query->exec("CREATE TABLE IF NOT EXISTS Users("
-                "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-                "login TEXT NOT NULL UNIQUE,"
-                "password TEXT NOT NULL,"
-                "email TEXT NOT NULL UNIQUE"
-                ");"
-                );
-
-    _dbUsers.commit();
-    _dbUsers.close();
 
     //==========================================
     QVBoxLayout* ltBody = new QVBoxLayout();
@@ -121,32 +97,13 @@ void LoginWindow::signUp()
         return;
     }
 
-    bool checkOpen = _dbUsers.open();
-    if (!checkOpen)
-    {
-        QMessageBox::warning(0, "Error", _dbUsers.lastError().text());
-        return;
-    }
-    _dbUsers.transaction();
-
-    QSqlQuery* query = new QSqlQuery(_dbUsers);
-    query->prepare("INSERT INTO Users(login, password, email) VALUES(:login, :password, :email)");
-    query->bindValue(":login", _edLogin->text());
-    query->bindValue(":password", _edPassword->text());
-    query->bindValue(":email", _edEmail->text());
-    bool resultCreateUser = query->exec();
-
-    if (!resultCreateUser)
+    if (!_identityMap->signUp(_edLogin->text(), _edPassword->text(), _edEmail->text()))
     {
         QMessageBox::warning(0, "Error", "Failed to create a new user.");
         return;
     }
 
-    _dbUsers.commit();
-    _dbUsers.close();
-
     QString path = "C:/Users/getd8/Desktop/FileManager/users/" + _edLogin->text() + "/";
-
     if (!_dir.exists(path))
         _dir.mkdir(path);
 
@@ -162,26 +119,11 @@ void LoginWindow::signIn()
         return;
     }
 
-    bool checkOpen = _dbUsers.open();
-    if (!checkOpen)
-    {
-        QMessageBox::warning(0, "Error", _dbUsers.lastError().text());
-        return;
-    }
-    _dbUsers.transaction();
-
-    QSqlQuery* query = new QSqlQuery(_dbUsers);
-    query->prepare(QString("SELECT * FROM Users WHERE login = '%1' AND password = '%2' AND email = '%3'").arg(_edLogin->text(), _edPassword->text(), _edEmail->text()));
-    query->exec();
-
-    if (!query->next())
+    if (!_identityMap->signIn(_edLogin->text(), _edPassword->text(), _edEmail->text()))
     {
         QMessageBox::warning(0, "Error", "Couldn't log in to your account.");
         return;
     }
-
-    _dbUsers.commit();
-    _dbUsers.close();
 
     this->close();
     emit logIn(_edLogin->text());

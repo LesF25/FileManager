@@ -11,6 +11,7 @@ CONFIG += c++17
 SOURCES += \
     createwindows.cpp \
     filecontentwindow.cpp \
+    identitymap.cpp \
     loginwindow.cpp \
     main.cpp \
     mainwindow.cpp
@@ -18,6 +19,7 @@ SOURCES += \
 HEADERS += \
     createwindows.h \
     filecontentwindow.h \
+    identitymap.h \
     loginwindow.h \
     mainwindow.h
 

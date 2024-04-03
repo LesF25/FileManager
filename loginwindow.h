@@ -1,4 +1,5 @@
 #pragma once
+#include "identitymap.h"
 
 #include <QWidget>
 #include <QLineEdit>
@@ -7,7 +8,6 @@
 #include <QComboBox>
 #include <QLabel>
 #include <QMessageBox>
-#include <QtSql>
 
 class LoginWindow : public QWidget
 {
@@ -25,8 +25,8 @@ private:
     QPushButton* _btSignIn;
     QPushButton* _btSignUp;
 
-    QSqlDatabase _dbUsers;
     QDir _dir;
+    IdentityMap* _identityMap;
 
 private:
     void initStyleLabel(QLabel*, int, Qt::AlignmentFlag);

@@ -2,6 +2,7 @@
 # ----------------------------------------------------------------------------
 users/
 users.db
+build-FileManager-Desktop_Qt_6_6_2_MinGW_64_bit-Debug/
 *~
 *.autosave
 *.a
