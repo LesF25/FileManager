@@ -1,13 +1,7 @@
-/*
- * чтение/запись в файл - 2 клика (осуществляется переход в новое окно)
- * переход в дирректорию - 2 клик (на QListWidget отображать содержимое директории)
- * переход назад в директорию - будет в QListWidget выбор .. нажав на который будет осуществляться переход назад
-*/
-
 #pragma once
 #include "loginwindow.h"
 #include "filecontentwindow.h"
-#include <createwindows.h>
+#include "createwindows.h"
 
 #include <QWidget>
 #include <QListWidget>
@@ -28,8 +22,9 @@ public:
 
 private:
     QString _username;
-    QList <QString> _currentPath;
+    QString _currentPath;
     QList <QString> _forwardFolderPath;
+    QList <QString> _backFolderPath;
 
     QVBoxLayout* _ltMain;
     QLineEdit* _edCurrentFolder;
@@ -40,6 +35,7 @@ private:
     QPushButton* _btExitAccount;
     QPushButton* _btBackFolder;
     QPushButton* _btForwardFolder;
+    IMQuickAccess* _listQuickAccess;
 
     LoginWindow* _wndLogin;
     FileContentWindow* _wndFileContent;
@@ -53,6 +49,7 @@ signals:
 
     void signCreateFile(QString);
     void signCreateFolder(QString);
+    void signQuickMoveFolder();
 
 private slots:
     void createFile();                                  // _btCreateFile
@@ -65,13 +62,15 @@ private slots:
     void moveFolder(QListWidgetItem*);                  // _list
     void moveBackFolder();                              // _btBackFolder
     void moveForwardFolder();                           // _btForwardFolder
+    void quickMoveFodler();
 
     void rcvConnectLogIn(QString);
     void rcvConnectCloseFile();
     void rcvConnectSaveFile(QString);
+    void rcvConnectQuickAccess(QString);
 
 private:
     void initStyleLabel(QLabel* label, int width, Qt::AlignmentFlag flag);
-    QString getFullPath();
+    void displayContent(QString);
 };
 

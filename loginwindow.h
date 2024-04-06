@@ -26,7 +26,7 @@ private:
     QPushButton* _btSignUp;
 
     QDir _dir;
-    IdentityMap* _identityMap;
+    IMLoginSystem* _identityMap;
 
 private:
     void initStyleLabel(QLabel*, int, Qt::AlignmentFlag);

@@ -1,6 +1,7 @@
 /*
-    прокси может хранить бд и сам проверять доступ пользователя, кэшировать переходы пользователя
-    сделать так, чтобы вылетали окна с созданием папок/файлов, но при этом оставалось главноее окно и к нему был закрыт доступ
+ * переходы между папками осуществляются не запоминанием предыдующей/следующей папки, а запоминанием абсолютных путей.
+ * Можно _currentPath сделать просто QString и таскать текущую дирректорию из _back и _forward
+ * исправить логику заполнения _forward
 */
 
 #include "MainWindow.h"
@@ -24,7 +25,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     _ltMain = new QVBoxLayout();
     this->setLayout(_ltMain);
-    this->setFixedSize(400, 350);
+    this->setFixedSize(400, 380);
 
     _wndLogin = new LoginWindow();
     _wndFileContent = new FileContentWindow();
@@ -45,11 +46,15 @@ MainWindow::MainWindow(QWidget *parent)
     ltHeader->addWidget(_edCurrentFolder);
 
     // ================= BODY LAYOUT =================
-    QHBoxLayout* ltBody = new QHBoxLayout();
+    QVBoxLayout* ltBody = new QVBoxLayout();
+
     _listFolderContents = new QListWidget();
-    _listFolderContents->setFixedHeight(220);
+
+    _listQuickAccess = new IMQuickAccess();
+    _listQuickAccess->setFixedHeight(90);
 
     ltBody->addWidget(_listFolderContents);
+    ltBody->addWidget(_listQuickAccess);
 
     // ================ FOOTER LAYOUT ================
     QVBoxLayout* ltFooter = new QVBoxLayout();
@@ -89,8 +94,6 @@ MainWindow::MainWindow(QWidget *parent)
     _ltMain->addLayout(ltBody);
     _ltMain->addLayout(ltFooter);
 
-    connect(_btExitAccount, &QPushButton::clicked, this, &MainWindow::exitAccount);
-
     connect(_btCreateFile, &QPushButton::clicked, this, &MainWindow::createFile);
     connect(this, &MainWindow::signCreateFile, _wndCreateFile, &CreateFileWindow::rcvConnect);
     connect(_wndCreateFile, &CreateFileWindow::signCancel, this, &MainWindow::rcvConnectCloseFile);
@@ -102,15 +105,25 @@ MainWindow::MainWindow(QWidget *parent)
     connect(_wndCreateFolder, &CreateFolderWindow::signCreateFolder, this, &MainWindow::displayFolder);
 
     connect(_btDelete, &QPushButton::clicked, this, &MainWindow::deleteElement);
-    connect(_listFolderContents, &QListWidget::itemDoubleClicked, this, &MainWindow::moveFolder);
     connect(_btBackFolder, &QPushButton::clicked, this, &MainWindow::moveBackFolder);
     connect(_btForwardFolder, &QPushButton::clicked, this, &MainWindow::moveForwardFolder);
+    connect(_btExitAccount, &QPushButton::clicked, this, &MainWindow::exitAccount);
+
+    connect(_listFolderContents, &QListWidget::itemDoubleClicked, this, &MainWindow::moveFolder);
+    connect(_listQuickAccess, &IMQuickAccess::itemDoubleClicked, this, &MainWindow::quickMoveFodler);
+    connect(_listQuickAccess, &IMQuickAccess::signSendPath, this, &MainWindow::rcvConnectQuickAccess);
+    connect(this, &MainWindow::signQuickMoveFolder, _listQuickAccess, &IMQuickAccess::quickMoveFolder);
 
     connect(_wndLogin, &LoginWindow::logIn, this, &MainWindow::rcvConnectLogIn);
     connect(_wndFileContent, &FileContentWindow::fileSaved, this, &MainWindow::rcvConnectSaveFile);
     connect(_wndFileContent, &FileContentWindow::fileClose, this, &MainWindow::rcvConnectCloseFile);
     connect(this, &MainWindow::sendCurrentFile, _wndFileContent, &FileContentWindow::rcvCurrentFile);
     connect(this, &MainWindow::openFile, this, &MainWindow::changeFile);
+}
+
+void MainWindow::quickMoveFodler()
+{
+    emit signQuickMoveFolder();
 }
 
 void MainWindow::createFile()
@@ -131,80 +144,62 @@ void MainWindow::createFolder()
 
 void MainWindow::moveBackFolder()
 {
+    _listQuickAccess->addQuickAccess(_currentPath);
+
     if (!_btForwardFolder->isEnabled())
         _btForwardFolder->setEnabled(true);
 
-    if (_edCurrentFolder->text() == ("C:/Users/getd8/Desktop/FileManager/users/" + _username + "/" + _currentPath[_currentPath.length() - 1]))
+    QString path = _backFolderPath.at(0);
+    if (path == _backFolderPath.at(_backFolderPath.length() - 2))
         _btBackFolder->setEnabled(false);
 
-
     _listFolderContents->clear();
-    _currentPath.pop_back();
-    QString path = getFullPath();
-    _edCurrentFolder->setText(path);
+    _backFolderPath.pop_back();
 
-    QDir dir(path);
-    QFileInfoList list = dir.entryInfoList();
-    for (int i = 2; i < list.size(); ++i)
-    {
-        QFileInfo fileInfo = list.at(i);
-        _listFolderContents->addItem(fileInfo.fileName());
-    }
+    _currentPath = _backFolderPath[_backFolderPath.size() - 1];
+    _edCurrentFolder->setText(_currentPath);
+    displayContent(_currentPath);
 }
 
 void MainWindow::moveForwardFolder()
 {
-    QString pathForward;
-    for (int i = 0; i < _forwardFolderPath.size(); i++)
-        pathForward += _forwardFolderPath[i];
+    if (!_btBackFolder->isEnabled())
+        _btBackFolder->setEnabled(true);
 
-    QDir dirForward(pathForward);
+    int it;
+    for (it = 0; it < _forwardFolderPath.size(); ++it)
+        if (_currentPath == _forwardFolderPath.at(it))
+            break;
+
+    ++it;
+    QDir dirForward(_forwardFolderPath.at(it));
     if (!dirForward.exists())
     {
-        int i = 0;
-        pathForward = _forwardFolderPath[i];
-        dirForward.setPath(pathForward);
-        while (dirForward.exists())
-        {
-            ++i;
-            pathForward += _forwardFolderPath[i];
-            dirForward.setPath(pathForward);
-        }
-
-        while(_forwardFolderPath.size() != i)
+        while(_forwardFolderPath.size() != it)
             _forwardFolderPath.pop_back();
+
+        if (_btForwardFolder->isEnabled())
+            _btForwardFolder->setEnabled(false);
 
         QMessageBox::warning(0, "Error", "The directory was not found.");
         return;
     }
 
-    if (!_btBackFolder->isEnabled())
-        _btBackFolder->setEnabled(true);
-
-    int i = _currentPath.size();
-    if (i == _forwardFolderPath.size() - 1 && _btForwardFolder->isEnabled())
+    if (it == _forwardFolderPath.size() - 1 && _btForwardFolder->isEnabled())
         _btForwardFolder->setEnabled(false);
-
-    if ( i != _forwardFolderPath.size())
-        _currentPath.push_back(_forwardFolderPath.at(i));
 
     _listFolderContents->clear();
 
-    QString path = getFullPath();
-    _edCurrentFolder->setText(path);
+    _currentPath = _forwardFolderPath.at(it);
+    _backFolderPath.push_back(_currentPath);
+    _edCurrentFolder->setText(_currentPath);
 
-    QDir dir(path);
-    QFileInfoList list = dir.entryInfoList();
-    for (int i = 2; i < list.size(); ++i)
-    {
-        QFileInfo fileInfo = list.at(i);
-        _listFolderContents->addItem(fileInfo.fileName());
-    }
+    displayContent(_currentPath);
 }
 
 void MainWindow::moveFolder(QListWidgetItem* item)
 {
-    QString path = getFullPath() + item->text();
+    QString path = _currentPath + item->text();
     QFile file(path);
     QFileInfo fileInfo(file);
 
@@ -218,25 +213,22 @@ void MainWindow::moveFolder(QListWidgetItem* item)
         if (_btForwardFolder->isEnabled())
             _btForwardFolder->setEnabled(false);
 
-        int i = _currentPath.size();
-        while(i != _forwardFolderPath.size())
+        int it;
+        for (it = 0; it < _forwardFolderPath.size(); ++it)
+            if (_currentPath == _forwardFolderPath.at(it))
+                break;
+
+        while(it < _forwardFolderPath.size() - 1)
             _forwardFolderPath.pop_back();
 
-        _forwardFolderPath.push_back(item->text() + "/");
+        _currentPath = path + "/";
+        _forwardFolderPath.push_back(_currentPath);
+        _backFolderPath.push_back(_currentPath);
 
-        _currentPath.push_back(item->text() + "/");
+
         _listFolderContents->clear();
-
-        QString path = getFullPath();
-        _edCurrentFolder->setText(path);
-
-        QDir dir(path);
-        QFileInfoList list = dir.entryInfoList();
-        for (int i = 2; i < list.size(); ++i)
-        {
-            QFileInfo fileInfo = list.at(i);
-            _listFolderContents->addItem(fileInfo.fileName());
-        }
+        _edCurrentFolder->setText(_currentPath);
+        displayContent(_currentPath);
     }
 }
 
@@ -255,7 +247,7 @@ void MainWindow::displayFolder(QString folderName)
 
 void MainWindow::changeFile()
 {
-    QString path = getFullPath()+ _listFolderContents->currentItem()->text();
+    QString path = _currentPath + _listFolderContents->currentItem()->text();
     QFile file(path);
     QFileInfo fileInfo(file);
 
@@ -277,7 +269,7 @@ void MainWindow::deleteElement()
         QMessageBox::warning(0, "Error", "Select the item to delete.");
         return;
     }
-    QString path = getFullPath() + _listFolderContents->currentItem()->text();
+    QString path = _currentPath + _listFolderContents->currentItem()->text();
 
     QFile file(path);
     QFileInfo infoFile(file);
@@ -325,16 +317,26 @@ void MainWindow::exitAccount()
     this->close();
 }
 
+void MainWindow::rcvConnectQuickAccess(QString path)
+{
+    // очистка текщуей дирректории
+
+    _listFolderContents->clear();
+    _edCurrentFolder->setText(path);
+
+    displayContent(path);
+}
+
 void MainWindow::rcvConnectLogIn(QString username)
 {
     _username = username;
-    _currentPath.push_back("C:/Users/getd8/Desktop/FileManager/users/" + _username + "/");
-    _forwardFolderPath.push_back("C:/Users/getd8/Desktop/FileManager/users/" + _username + "/");
+    _currentPath = "C:/Users/getd8/Desktop/FileManager/users/" + _username + "/";
+    _forwardFolderPath.push_back(_currentPath);
+    _backFolderPath.push_back(_currentPath);
 
-    QString path = getFullPath();
 
-    _edCurrentFolder->setText(path);
-    QDir dir(path);
+    _edCurrentFolder->setText(_currentPath);
+    QDir dir(_currentPath);
     QFileInfoList list = dir.entryInfoList();
 
     for (int i = 2; i < list.size(); ++i)
@@ -349,7 +351,6 @@ void MainWindow::rcvConnectLogIn(QString username)
     _btCreateFile->setEnabled(true);
     _btCreateFolder->setEnabled(true);
     _btDelete->setEnabled(true);
-    //    _btForwardFolder->setEnabled(true);
 
     this->show();
 }
@@ -376,13 +377,15 @@ void MainWindow::rcvConnectSaveFile(QString fileName)
     this->show();
 }
 
-QString MainWindow::getFullPath()
+void MainWindow::displayContent(QString path)
 {
-    QString path;
-    for(int i = 0; i < _currentPath.size(); i++)
-        path += _currentPath.at(i);
-
-    return path;
+    QDir dir(path);
+    QFileInfoList list = dir.entryInfoList();
+    for (int i = 2; i < list.size(); ++i)
+    {
+        QFileInfo fileInfo = list.at(i);
+        _listFolderContents->addItem(fileInfo.fileName());
+    }
 }
 
 MainWindow::~MainWindow()

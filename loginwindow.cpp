@@ -16,7 +16,7 @@ LoginWindow::LoginWindow(QWidget *parent)
     if (!_dir.exists(path))
         _dir.mkdir(path);
 
-    _identityMap = new IdentityMap();
+    _identityMap = new IMLoginSystem();
 
     _ltMain = new QVBoxLayout();
     this->setLayout(_ltMain);

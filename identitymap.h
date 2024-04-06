@@ -1,13 +1,14 @@
 #include <QWidget>
 #include <QString>
-#include <QMap>
 #include <QtSql>
+#include <QListWidget>
+#include <QMultiMap>
 
-class IdentityMap
+class IMLoginSystem
 {
 public:
-    IdentityMap();
-    ~IdentityMap() = default;
+    IMLoginSystem();
+    ~IMLoginSystem() = default;
 
     bool signIn(QString, QString, QString);
     bool signUp(QString, QString, QString);
@@ -15,4 +16,26 @@ public:
 private:
     QMap<QString, QString> _users;
     QSqlDatabase _dbUsers;
+};
+
+
+class IMQuickAccess : public QListWidget
+{
+    Q_OBJECT
+public:
+    IMQuickAccess() = default;
+    ~IMQuickAccess() = default;
+    void addQuickAccess(QString);
+
+private:
+    QList<QFileInfo> _quickAccessToFolders;
+
+    bool search(QFileInfo);
+
+signals:
+    void signSendPath(QString);
+
+public slots:
+    void quickMoveFolder();
+
 };

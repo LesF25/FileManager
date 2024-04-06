@@ -1,7 +1,8 @@
 #include "identitymap.h"
 #include <QMessageBox>
+#include <QFile>
 
-IdentityMap::IdentityMap()
+IMLoginSystem::IMLoginSystem()
 {
     _dbUsers = QSqlDatabase::addDatabase("QSQLITE");
     _dbUsers.setDatabaseName("C:/Users/getd8/Desktop/FileManager/users.db");
@@ -28,7 +29,7 @@ IdentityMap::IdentityMap()
     _dbUsers.close();
 }
 
-bool IdentityMap::signIn(QString username, QString password, QString email)
+bool IMLoginSystem::signIn(QString username, QString password, QString email)
 {
     if (!_users.isEmpty())
     {
@@ -63,7 +64,7 @@ bool IdentityMap::signIn(QString username, QString password, QString email)
     return true;
 }
 
-bool IdentityMap::signUp(QString username, QString password, QString email)
+bool IMLoginSystem::signUp(QString username, QString password, QString email)
 {
     bool checkOpen = _dbUsers.open();
     if (!checkOpen)
@@ -89,4 +90,41 @@ bool IdentityMap::signUp(QString username, QString password, QString email)
     _users.insert(username, password);
 
     return true;
+}
+
+// ================================================================================
+void IMQuickAccess::quickMoveFolder()
+{
+    emit signSendPath(_quickAccessToFolders[this->currentRow()].absolutePath());
+}
+
+void IMQuickAccess::addQuickAccess(QString pathAbs)
+{
+    QFileInfo fileInfo(pathAbs);
+    if (!search(fileInfo))
+    {
+        if (_quickAccessToFolders.size() == 5)
+        {
+            _quickAccessToFolders.pop_front();
+            _quickAccessToFolders.push_back(fileInfo);
+            this->takeItem(0);
+            this->addItem(fileInfo.fileName());
+
+            return;
+        }
+
+        _quickAccessToFolders.push_back(fileInfo);
+        this->addItem(fileInfo.fileName());
+    }
+}
+
+bool IMQuickAccess::search(QFileInfo fileInfo)
+{
+    for (int i = 0; i < _quickAccessToFolders.length(); ++i)
+    {
+        if(fileInfo.absolutePath() == _quickAccessToFolders[i].absolutePath())
+            return true;
+    }
+
+    return false;
 }
