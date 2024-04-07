@@ -65,9 +65,13 @@ private slots:
     void quickMoveFodler();
 
     void rcvConnectLogIn(QString);
-    void rcvConnectCloseFile();
     void rcvConnectSaveFile(QString);
     void rcvConnectQuickAccess(QString);
+
+    void setAccessMainWindow();
+
+    void clearChoiceContentList();
+    void clearChoiceQuickList();
 
 private:
     void initStyleLabel(QLabel* label, int width, Qt::AlignmentFlag flag);

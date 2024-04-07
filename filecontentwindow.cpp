@@ -42,10 +42,16 @@ FileContentWindow::FileContentWindow(QWidget *parent)
     connect(_btCancel, &QPushButton::clicked, this, &FileContentWindow::closeWnd);
 }
 
+void FileContentWindow::closeEvent(QCloseEvent *event)
+{
+    emit signCloseWindow();
+    event->accept();
+}
+
 void FileContentWindow::closeWnd()
 {
     this->close();
-    emit fileClose();
+    emit signCloseWindow();
 }
 
 void FileContentWindow::rcvCurrentFile(QString path)

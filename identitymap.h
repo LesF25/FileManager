@@ -28,9 +28,9 @@ public:
     void addQuickAccess(QString);
 
 private:
-    QList<QFileInfo> _quickAccessToFolders;
+    QList<QString> _quickAccessToFolders;
 
-    bool search(QFileInfo);
+    bool search(QString);
 
 signals:
     void signSendPath(QString);

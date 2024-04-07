@@ -6,7 +6,6 @@
 #include <QDir>
 #include <QSpacerItem>
 
-
 LoginWindow::LoginWindow(QWidget *parent)
     : QWidget{parent}
 {
@@ -78,6 +77,12 @@ LoginWindow::LoginWindow(QWidget *parent)
     //==========================================
     connect(_btSignUp, &QPushButton::clicked, this, &LoginWindow::signUp);
     connect(_btSignIn, &QPushButton::clicked, this, &LoginWindow::signIn);
+}
+
+void LoginWindow::closeEvent(QCloseEvent *event)
+{
+    emit signCloseWindow();
+    event->accept();
 }
 
 void LoginWindow::signUp()

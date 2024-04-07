@@ -7,6 +7,7 @@
 #include <QPlainTextEdit>
 #include <QVBoxLayout>
 #include <QFile>
+#include <QCloseEvent>
 
 class FileContentWindow : public QWidget
 {
@@ -23,9 +24,12 @@ private:
     QPushButton* _btCancel;
     QFile _file;
 
+private:
+    void closeEvent(QCloseEvent*);
+
 signals:
     void fileSaved(QString);
-    void fileClose();
+    void signCloseWindow();
 
 private slots:
     void saveFileContents();

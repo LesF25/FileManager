@@ -1,9 +1,7 @@
 /*
- * переходы между папками осуществляются не запоминанием предыдующей/следующей папки, а запоминанием абсолютных путей.
- * Можно _currentPath сделать просто QString и таскать текущую дирректорию из _back и _forward
- * исправить логику заполнения _forward
+ * добавить контекстное меню при нажатии правой кнопки мыши (delete, закрепить на панели быстрого доступа)
+ * сделать так, чтобы высвечивалось изначально окно для входа
 */
-
 #include "MainWindow.h"
 
 #include <QHBoxLayout>
@@ -32,6 +30,11 @@ MainWindow::MainWindow(QWidget *parent)
     _wndCreateFile = new CreateFileWindow();
     _wndCreateFolder = new CreateFolderWindow();
 
+    _wndLogin->setWindowModality(Qt::ApplicationModal);
+    _wndFileContent->setWindowModality(Qt::ApplicationModal);
+    _wndCreateFile->setWindowModality(Qt::ApplicationModal);
+    _wndCreateFolder->setWindowModality(Qt::ApplicationModal);
+
     this->setWindowTitle("File Manager");
     // ================ HEADER LAYOUT ================
 
@@ -41,7 +44,6 @@ MainWindow::MainWindow(QWidget *parent)
     _edCurrentFolder->setReadOnly(true);
     _edCurrentFolder->setPlaceholderText("Log in to your account.");
     _edCurrentFolder->setFixedHeight(30);
-    //    _edCurrentFolder->setFont();
 
     ltHeader->addWidget(_edCurrentFolder);
 
@@ -51,7 +53,7 @@ MainWindow::MainWindow(QWidget *parent)
     _listFolderContents = new QListWidget();
 
     _listQuickAccess = new IMQuickAccess();
-    _listQuickAccess->setFixedHeight(90);
+    _listQuickAccess->setFixedHeight(95);
 
     ltBody->addWidget(_listFolderContents);
     ltBody->addWidget(_listQuickAccess);
@@ -96,13 +98,19 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(_btCreateFile, &QPushButton::clicked, this, &MainWindow::createFile);
     connect(this, &MainWindow::signCreateFile, _wndCreateFile, &CreateFileWindow::rcvConnect);
-    connect(_wndCreateFile, &CreateFileWindow::signCancel, this, &MainWindow::rcvConnectCloseFile);
     connect(_wndCreateFile, &CreateFileWindow::signCreateFile, this, &MainWindow::displayFile);
+    connect(_wndCreateFile, &CreateFileWindow::signCloseWindow, this, &MainWindow::setAccessMainWindow);
 
     connect(_btCreateFolder, &QPushButton::clicked, this, &MainWindow::createFolder);
     connect(this, &MainWindow::signCreateFolder, _wndCreateFolder, &CreateFolderWindow::rcvConnect);
-    connect(_wndCreateFolder, &CreateFolderWindow::signCancel, this, &MainWindow::rcvConnectCloseFile);
     connect(_wndCreateFolder, &CreateFolderWindow::signCreateFolder, this, &MainWindow::displayFolder);
+    connect(_wndCreateFolder, &CreateFolderWindow::signCloseWindow, this, &MainWindow::setAccessMainWindow);
+
+    connect(_wndLogin, &LoginWindow::logIn, this, &MainWindow::rcvConnectLogIn);
+    connect(_wndLogin, &LoginWindow::signCloseWindow, this, &MainWindow::setAccessMainWindow);
+
+    connect(_wndFileContent, &FileContentWindow::fileSaved, this, &MainWindow::rcvConnectSaveFile);
+    connect(_wndFileContent, &FileContentWindow::signCloseWindow, this, &MainWindow::setAccessMainWindow);
 
     connect(_btDelete, &QPushButton::clicked, this, &MainWindow::deleteElement);
     connect(_btBackFolder, &QPushButton::clicked, this, &MainWindow::moveBackFolder);
@@ -110,19 +118,36 @@ MainWindow::MainWindow(QWidget *parent)
     connect(_btExitAccount, &QPushButton::clicked, this, &MainWindow::exitAccount);
 
     connect(_listFolderContents, &QListWidget::itemDoubleClicked, this, &MainWindow::moveFolder);
+    connect(_listFolderContents, &QListWidget::itemClicked, this, &MainWindow::clearChoiceQuickList);
     connect(_listQuickAccess, &IMQuickAccess::itemDoubleClicked, this, &MainWindow::quickMoveFodler);
     connect(_listQuickAccess, &IMQuickAccess::signSendPath, this, &MainWindow::rcvConnectQuickAccess);
+    connect(_listQuickAccess, &IMQuickAccess::itemClicked, this, &MainWindow::clearChoiceContentList);
     connect(this, &MainWindow::signQuickMoveFolder, _listQuickAccess, &IMQuickAccess::quickMoveFolder);
 
-    connect(_wndLogin, &LoginWindow::logIn, this, &MainWindow::rcvConnectLogIn);
-    connect(_wndFileContent, &FileContentWindow::fileSaved, this, &MainWindow::rcvConnectSaveFile);
-    connect(_wndFileContent, &FileContentWindow::fileClose, this, &MainWindow::rcvConnectCloseFile);
     connect(this, &MainWindow::sendCurrentFile, _wndFileContent, &FileContentWindow::rcvCurrentFile);
     connect(this, &MainWindow::openFile, this, &MainWindow::changeFile);
 }
 
+void MainWindow::setAccessMainWindow()
+{
+    this->show();
+}
+
+void MainWindow::clearChoiceContentList()
+{
+    _listFolderContents->clearSelection();
+}
+
+void MainWindow::clearChoiceQuickList()
+{
+    _listQuickAccess->clearSelection();
+}
+
 void MainWindow::quickMoveFodler()
 {
+    if (_btBackFolder->isEnabled())
+        _btBackFolder->setEnabled(true);
+
     emit signQuickMoveFolder();
 }
 
@@ -130,7 +155,6 @@ void MainWindow::createFile()
 {
     this->close();
     _wndCreateFile->show();
-
     emit signCreateFile(_edCurrentFolder->text());
 }
 
@@ -138,7 +162,6 @@ void MainWindow::createFolder()
 {
     this->close();
     _wndCreateFolder->show();
-
     emit signCreateFolder(_edCurrentFolder->text());
 }
 
@@ -235,14 +258,15 @@ void MainWindow::moveFolder(QListWidgetItem* item)
 void MainWindow::displayFile(QString path)
 {
     _listFolderContents->clearSelection();
-    _wndFileContent->show();
+    this->close();
+    _wndFileContent->show();    
     emit sendCurrentFile(path);
 }
 
 void MainWindow::displayFolder(QString folderName)
 {
-    _listFolderContents->addItem(folderName);
     this->show();
+    _listFolderContents->addItem(folderName);
 }
 
 void MainWindow::changeFile()
@@ -257,8 +281,8 @@ void MainWindow::changeFile()
         return;
     }
 
-    _wndFileContent->show();
     this->close();
+    _wndFileContent->show();
     emit sendCurrentFile(path);
 }
 
@@ -313,8 +337,8 @@ void MainWindow::exitAccount()
     _currentPath.clear();
     _listFolderContents->clear();
 
-    _wndLogin->show();
     this->close();
+    _wndLogin->show();
 }
 
 void MainWindow::rcvConnectQuickAccess(QString path)
@@ -352,11 +376,6 @@ void MainWindow::rcvConnectLogIn(QString username)
     _btCreateFolder->setEnabled(true);
     _btDelete->setEnabled(true);
 
-    this->show();
-}
-
-void MainWindow::rcvConnectCloseFile()
-{
     this->show();
 }
 

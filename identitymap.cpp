@@ -95,34 +95,36 @@ bool IMLoginSystem::signUp(QString username, QString password, QString email)
 // ================================================================================
 void IMQuickAccess::quickMoveFolder()
 {
-    emit signSendPath(_quickAccessToFolders[this->currentRow()].absolutePath());
+    emit signSendPath(_quickAccessToFolders[this->currentRow()]);
 }
 
 void IMQuickAccess::addQuickAccess(QString pathAbs)
 {
-    QFileInfo fileInfo(pathAbs);
-    if (!search(fileInfo))
+    if (!search(pathAbs))
     {
+        QDir dir(pathAbs);
+        QFileInfo fileInfo(dir.absolutePath());
+
         if (_quickAccessToFolders.size() == 5)
         {
             _quickAccessToFolders.pop_front();
-            _quickAccessToFolders.push_back(fileInfo);
+            _quickAccessToFolders.push_back(pathAbs);
             this->takeItem(0);
             this->addItem(fileInfo.fileName());
 
             return;
         }
 
-        _quickAccessToFolders.push_back(fileInfo);
+        _quickAccessToFolders.push_back(pathAbs);
         this->addItem(fileInfo.fileName());
     }
 }
 
-bool IMQuickAccess::search(QFileInfo fileInfo)
+bool IMQuickAccess::search(QString path)
 {
     for (int i = 0; i < _quickAccessToFolders.length(); ++i)
     {
-        if(fileInfo.absolutePath() == _quickAccessToFolders[i].absolutePath())
+        if(path == _quickAccessToFolders.at(i))
             return true;
     }
 

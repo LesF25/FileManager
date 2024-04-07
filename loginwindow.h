@@ -8,6 +8,7 @@
 #include <QComboBox>
 #include <QLabel>
 #include <QMessageBox>
+#include <QCloseEvent>
 
 class LoginWindow : public QWidget
 {
@@ -27,12 +28,13 @@ private:
 
     QDir _dir;
     IMLoginSystem* _identityMap;
-
 private:
     void initStyleLabel(QLabel*, int, Qt::AlignmentFlag);
+    void closeEvent(QCloseEvent*);
 
 signals:
     void logIn(QString);
+    void signCloseWindow();
 
 private slots:
     void signIn();

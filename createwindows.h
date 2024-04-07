@@ -6,6 +6,7 @@
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <QString>
+#include <QCloseEvent>
 
 class CreateFileWindow : public QWidget
 {
@@ -23,9 +24,12 @@ private:
     QPushButton* _btCancel;
     QPushButton* _btCreateFile;
 
+private:
+    void closeEvent(QCloseEvent*);
+
 signals:
     void signCreateFile(QString);
-    void signCancel();
+    void signCloseWindow();
 
 private slots:
     void createFile();
@@ -51,9 +55,12 @@ private:
     QPushButton* _btCancel;
     QPushButton* _btCreateFolder;
 
+private:
+    void closeEvent(QCloseEvent*);
+
 signals:
     void signCreateFolder(QString);
-    void signCancel();
+    void signCloseWindow();
 
 private slots:
     void createFolder();

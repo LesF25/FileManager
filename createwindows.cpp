@@ -57,6 +57,12 @@ CreateFileWindow::CreateFileWindow(QWidget* parent)
     connect(_btCreateFile, &QPushButton::clicked, this, &CreateFileWindow::createFile);
 }
 
+void CreateFileWindow::closeEvent(QCloseEvent *event)
+{
+    emit signCloseWindow();
+    event->accept();
+}
+
 void CreateFileWindow::createFile()
 {
     if (_edFileName->displayText().isEmpty())
@@ -87,8 +93,10 @@ void CreateFileWindow::rcvConnect(QString path)
 
 void CreateFileWindow::cancel()
 {
+    _edFileName->clear();
+
     this->close();
-    emit signCancel();
+    emit signCloseWindow();
 }
 
 CreateFileWindow::~CreateFileWindow()
@@ -139,6 +147,12 @@ CreateFolderWindow::CreateFolderWindow(QWidget* parent)
     connect(_btCreateFolder, &QPushButton::clicked, this, &CreateFolderWindow::createFolder);
 }
 
+void CreateFolderWindow::closeEvent(QCloseEvent *event)
+{
+    emit signCloseWindow();
+    event->accept();
+}
+
 void CreateFolderWindow::createFolder()
 {
     if (_edFolderName->displayText().isEmpty())
@@ -170,8 +184,10 @@ void CreateFolderWindow::rcvConnect(QString path)
 
 void CreateFolderWindow::cancel()
 {
+    _edFolderName->clear();
+
     this->close();
-    emit signCancel();
+    emit signCloseWindow();
 }
 
 CreateFolderWindow::~CreateFolderWindow()
