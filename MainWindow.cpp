@@ -20,6 +20,7 @@
 #include <QFileInfoList>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
+#include <QMenu>
 
 MainWindow::MainWindow(QWidget *parent)
     : QWidget(parent)
@@ -38,30 +39,33 @@ MainWindow::MainWindow(QWidget *parent)
     _wndFileContent->setWindowModality(Qt::ApplicationModal);
     _wndCreateFile->setWindowModality(Qt::ApplicationModal);
     _wndCreateFolder->setWindowModality(Qt::ApplicationModal);
-    // ================ HEADER LAYOUT ================
 
-    QHBoxLayout* ltHeader = new QHBoxLayout();
+// ================ Верхний уровень ================
+
+    QHBoxLayout* ltTop = new QHBoxLayout();
 
     _edCurrentFolder = new QLineEdit(this);
     _edCurrentFolder->setReadOnly(true);
     _edCurrentFolder->setPlaceholderText("Log in to your account.");
     _edCurrentFolder->setFixedHeight(30);
 
-    ltHeader->addWidget(_edCurrentFolder);
+    ltTop->addWidget(_edCurrentFolder);
 
     // ================= BODY LAYOUT =================
-    QVBoxLayout* ltBody = new QVBoxLayout();
+    QVBoxLayout* ltAverage = new QVBoxLayout();
 
     _listFolderContents = new QListWidget();
+    _listFolderContents->setContextMenuPolicy(Qt::CustomContextMenu);
 
     _listQuickAccess = new IMQuickAccess();
     _listQuickAccess->setFixedHeight(95);
+//    _listQuickAccess->setContextMenuPolicy(Qt::CustomContextMenu);
 
-    ltBody->addWidget(_listFolderContents);
-    ltBody->addWidget(_listQuickAccess);
+    ltAverage->addWidget(_listFolderContents);
+    ltAverage->addWidget(_listQuickAccess);
 
     // ================ FOOTER LAYOUT ================
-    QVBoxLayout* ltFooter = new QVBoxLayout();
+    QVBoxLayout* ltLow = new QVBoxLayout();
 
     QHBoxLayout* ltFile = new QHBoxLayout();
     _btCreateFile = new QPushButton("Create File", this);
@@ -90,17 +94,17 @@ MainWindow::MainWindow(QWidget *parent)
     ltNavigation->addWidget(_btExitAccount);
     ltNavigation->addWidget(_btForwardFolder);
 
-    ltFooter->addLayout(ltFile);
-    ltFooter->addLayout(ltNavigation);
+    ltLow->addLayout(ltFile);
+    ltLow->addLayout(ltNavigation);
     // ===============================================
 
-    _ltMain->addLayout(ltHeader);
-    _ltMain->addLayout(ltBody);
-    _ltMain->addLayout(ltFooter);
+    _ltMain->addLayout(ltTop);
+    _ltMain->addLayout(ltAverage);
+    _ltMain->addLayout(ltLow);
 
     connect(_btCreateFile, &QPushButton::clicked, this, &MainWindow::createFile);
     connect(this, &MainWindow::signCreateFile, _wndCreateFile, &CreateFileWindow::rcvConnect);
-    connect(_wndCreateFile, &CreateFileWindow::signCreateFile, this, &MainWindow::displayFile);
+    connect(_wndCreateFile, &CreateFileWindow::signCreateFile, this, &MainWindow::displayContentFile);
     connect(_wndCreateFile, &CreateFileWindow::signCloseWindow, this, &MainWindow::setAccessMainWindow);
 
     connect(_btCreateFolder, &QPushButton::clicked, this, &MainWindow::createFolder);
@@ -113,6 +117,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(_wndFileContent, &FileContentWindow::fileSaved, this, &MainWindow::rcvConnectSaveFile);
     connect(_wndFileContent, &FileContentWindow::signCloseWindow, this, &MainWindow::setAccessMainWindow);
+    connect(this, &MainWindow::signSendCurrentFile, _wndFileContent, &FileContentWindow::rcvCurrentFile);
 
     connect(_btDelete, &QPushButton::clicked, this, &MainWindow::deleteElement);
     connect(_btBackFolder, &QPushButton::clicked, this, &MainWindow::moveBackFolder);
@@ -121,44 +126,62 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(_listFolderContents, &QListWidget::itemDoubleClicked, this, &MainWindow::moveFolder);
     connect(_listFolderContents, &QListWidget::itemClicked, this, &MainWindow::clearChoiceQuickList);
+    connect(_listFolderContents, &QListWidget::customContextMenuRequested, this, &MainWindow::showContextMenuContentList);
 
-    connect(_listQuickAccess, &IMQuickAccess::itemDoubleClicked, this, &MainWindow::quickMoveFodler);
+    connect(_listQuickAccess, &IMQuickAccess::itemDoubleClicked, this, &MainWindow::quickMoveFolder);
     connect(_listQuickAccess, &IMQuickAccess::signSendPath, this, &MainWindow::rcvConnectQuickAccess);
     connect(_listQuickAccess, &IMQuickAccess::itemClicked, this, &MainWindow::clearChoiceContentList);
     connect(this, &MainWindow::signQuickMoveFolder, _listQuickAccess, &IMQuickAccess::quickMoveFolder);
 
-    connect(this, &MainWindow::sendCurrentFile, _wndFileContent, &FileContentWindow::rcvCurrentFile);
-    connect(this, &MainWindow::openFile, this, &MainWindow::changeFile);
+    connect(this, &MainWindow::signOpenFile, this, &MainWindow::changeFile);
 }
 
-void MainWindow::setAccessMainWindow()
+void MainWindow::fixFolder()
 {
-    this->show();
+    QString path = _currentPath + _listFolderContents->currentItem()->text();
+    QFile file(path);
+    QFileInfo fileInfo(file);
+
+    if(file.exists() && fileInfo.isFile())
+        _listQuickAccess->addQuickAccess(path);
+    else if (file.exists() && fileInfo.isDir())
+        _listQuickAccess->addQuickAccess(path + "/");
 }
 
-void MainWindow::clearChoiceContentList()
+void MainWindow::detachFolder()
 {
-    _listFolderContents->clearSelection();
+    _listQuickAccess->removeQuickAccess(_listQuickAccess->currentRow());
 }
 
-void MainWindow::clearChoiceQuickList()
+void MainWindow::showContextMenuQuickList(const QPoint & pos)
 {
-    _listQuickAccess->clearSelection();
+    QListWidgetItem *item = _listQuickAccess->itemAt(pos);
+    if (item == nullptr)
+        return;
+
+    QMenu menu;
+    menu.addAction("Detach", this, &MainWindow::detachFolder);
+    menu.exec(_listQuickAccess->mapToGlobal(pos));
 }
 
-void MainWindow::quickMoveFodler()
+void MainWindow::showContextMenuContentList(const QPoint& pos)
 {
-    if (!_btBackFolder->isEnabled())
-        _btBackFolder->setEnabled(true);
+    QListWidgetItem *item = _listFolderContents->itemAt(pos);
 
-    if (_btForwardFolder->isEnabled())
-        _btForwardFolder->setEnabled(false);
-
-    int it = _forwardFolderPath.indexOf(_currentPath);
-    while(it < _forwardFolderPath.size() - 1)
-        _forwardFolderPath.pop_back();
-
-    emit signQuickMoveFolder();
+    if (item == nullptr)
+    {
+        QMenu menu;
+        menu.addAction("Create folder", this, &MainWindow::createFolder);
+        menu.addAction("Create file", this, &MainWindow::createFile);
+        menu.exec(_listFolderContents->mapToGlobal(pos));
+    }
+    else
+    {
+        QMenu menu;
+        menu.addAction("Fix", this, &MainWindow::fixFolder);
+        menu.addAction("Delete", this, &MainWindow::deleteElement);
+        menu.exec(_listFolderContents->mapToGlobal(pos));
+    }
 }
 
 void MainWindow::createFile()
@@ -177,8 +200,6 @@ void MainWindow::createFolder()
 
 void MainWindow::moveBackFolder()
 {
-    _listQuickAccess->addQuickAccess(_currentPath);
-
     if (!_btForwardFolder->isEnabled())
         _btForwardFolder->setEnabled(true);
 
@@ -234,7 +255,7 @@ void MainWindow::moveFolder(QListWidgetItem* item)
     QFileInfo fileInfo(file);
 
     if(file.exists() && fileInfo.isFile())
-        emit openFile();
+        emit signOpenFile();
     else if (file.exists() && fileInfo.isDir())
     {
         if (!_btBackFolder->isEnabled())
@@ -260,18 +281,18 @@ void MainWindow::moveFolder(QListWidgetItem* item)
     }
 }
 
-void MainWindow::displayFile(QString path)
+void MainWindow::displayContentFile(QString path)
 {
     _listFolderContents->clearSelection();
     this->close();
-    _wndFileContent->show();    
-    emit sendCurrentFile(path);
+    _wndFileContent->show();
+    emit signSendCurrentFile(path);
 }
 
 void MainWindow::displayFolder(QString folderName)
 {
     this->show();
-    _listFolderContents->addItem(folderName);
+    _listFolderContents->addItem(new QListWidgetItem(QIcon(":resource/icons/folder.png"), folderName));
 }
 
 void MainWindow::changeFile()
@@ -288,7 +309,7 @@ void MainWindow::changeFile()
 
     this->close();
     _wndFileContent->show();
-    emit sendCurrentFile(path);
+    emit signSendCurrentFile(path);
 }
 
 void MainWindow::deleteElement()
@@ -348,16 +369,38 @@ void MainWindow::exitAccount()
 
 void MainWindow::rcvConnectQuickAccess(QString path)
 {
-    _listFolderContents->clear();
-    _currentPath = path;
-    _forwardFolderPath.push_back(_currentPath);
+    QFile file(path);
+    QFileInfo fileInfo(file);
 
-    int it = _backFolderPath.indexOf(_currentPath);
-    if (it == -1)
-        _backFolderPath.push_back(_currentPath);
+    if(file.exists() && fileInfo.isFile())
+    {
+        this->close();
+        _wndFileContent->show();
+        emit signSendCurrentFile(path);
+    }
+    else if (file.exists() && fileInfo.isDir())
+    {
+        if (!_btBackFolder->isEnabled())
+            _btBackFolder->setEnabled(true);
 
-    _edCurrentFolder->setText(_currentPath);
-    displayContent(_currentPath);
+        if (_btForwardFolder->isEnabled())
+            _btForwardFolder->setEnabled(false);
+
+        int itForward = _forwardFolderPath.indexOf(_currentPath);
+        while(itForward < _forwardFolderPath.size())
+            _forwardFolderPath.pop_back();
+
+        _listFolderContents->clear();
+        _currentPath = path;
+        _forwardFolderPath.push_back(_currentPath);
+
+        int itBack = _backFolderPath.indexOf(_currentPath);
+        if (itBack == -1)
+            _backFolderPath.push_back(_currentPath);
+
+        _edCurrentFolder->setText(_currentPath);
+        displayContent(_currentPath);
+    }
 }
 
 void MainWindow::rcvConnectLogIn(QString username)
@@ -366,25 +409,13 @@ void MainWindow::rcvConnectLogIn(QString username)
     _currentPath = "C:/Users/getd8/Desktop/FileManager/users/" + _username + "/";
     _forwardFolderPath.push_back(_currentPath);
     _backFolderPath.push_back(_currentPath);
-
-
     _edCurrentFolder->setText(_currentPath);
-    QDir dir(_currentPath);
-    QFileInfoList list = dir.entryInfoList();
-
-    for (int i = 2; i < list.size(); ++i)
-    {
-        QFileInfo fileInfo = list.at(i);
-        if (fileInfo.isFile())
-            _listFolderContents->addItem(fileInfo.fileName());
-        else
-            _listFolderContents->addItem(fileInfo.fileName());
-    }
 
     _btCreateFile->setEnabled(true);
     _btCreateFolder->setEnabled(true);
     _btDelete->setEnabled(true);
 
+    displayContent(_currentPath);
     this->show();
 }
 
@@ -400,7 +431,7 @@ void MainWindow::rcvConnectSaveFile(QString fileName)
     }
 
     if (flag)
-        _listFolderContents->addItem(fileName);
+        _listFolderContents->addItem(new QListWidgetItem(QIcon(":resource/icons/file.png"), fileName));
 
     this->show();
 }
@@ -412,7 +443,10 @@ void MainWindow::displayContent(QString path)
     for (int i = 2; i < list.size(); ++i)
     {
         QFileInfo fileInfo = list.at(i);
-        _listFolderContents->addItem(fileInfo.fileName());
+        if (fileInfo.isFile())
+            _listFolderContents->addItem(new QListWidgetItem(QIcon(":resource/icons/file2.png"), fileInfo.fileName()));
+        else
+            _listFolderContents->addItem(new QListWidgetItem(QIcon(":resource/icons/folder.png"), fileInfo.fileName()));
     }
 }
 

@@ -10,7 +10,6 @@
 #include <QPushButton>
 #include <QComboBox>
 #include <QList>
-#include <memory>
 
 class MainWindow : public QWidget
 {
@@ -29,13 +28,13 @@ private:
     QVBoxLayout* _ltMain;
     QLineEdit* _edCurrentFolder;
     QListWidget* _listFolderContents;
+    IMQuickAccess* _listQuickAccess;
     QPushButton* _btCreateFile;
     QPushButton* _btCreateFolder;
     QPushButton* _btDelete;
     QPushButton* _btExitAccount;
     QPushButton* _btBackFolder;
     QPushButton* _btForwardFolder;
-    IMQuickAccess* _listQuickAccess;
 
     LoginWindow* _wndLogin;
     FileContentWindow* _wndFileContent;
@@ -43,35 +42,39 @@ private:
     CreateFolderWindow* _wndCreateFolder;
 
 signals:
-    void sendCurrentFile(QString);
-    void openFile();
-    void openFolder();
+    void signSendCurrentFile(QString);
+    void signOpenFile();
 
     void signCreateFile(QString);
     void signCreateFolder(QString);
     void signQuickMoveFolder();
 
 private slots:
-    void createFile();                                  // _btCreateFile
-    void displayFile(QString);
-    void changeFile();
-    void createFolder();                                // _btCreateFolder
+    void createFile();
+    void createFolder();
+    void deleteElement();
+    void exitAccount();
+    void moveBackFolder();
+    void moveForwardFolder();
+
     void displayFolder(QString);
-    void deleteElement();                               // _btDelete
-    void exitAccount();                                 // _btExitAccount
-    void moveFolder(QListWidgetItem*);                  // _list
-    void moveBackFolder();                              // _btBackFolder
-    void moveForwardFolder();                           // _btForwardFolder
-    void quickMoveFodler();
+    void displayContentFile(QString);
+    void changeFile();
+
+    void moveFolder(QListWidgetItem*);
+    void clearChoiceContentList() {_listFolderContents->clearSelection();}
+    void showContextMenuContentList(const QPoint&);
+
+    void quickMoveFolder() { emit signQuickMoveFolder(); }
+    void clearChoiceQuickList() {_listQuickAccess->clearSelection();}
+    void showContextMenuQuickList(const QPoint &);
+    void fixFolder();
 
     void rcvConnectLogIn(QString);
     void rcvConnectSaveFile(QString);
     void rcvConnectQuickAccess(QString);
-
-    void setAccessMainWindow();
-
-    void clearChoiceContentList();
-    void clearChoiceQuickList();
+    void setAccessMainWindow() {this->show();}
+    void detachFolder();
 
 private:
     void initStyleLabel(QLabel* label, int width, Qt::AlignmentFlag flag);

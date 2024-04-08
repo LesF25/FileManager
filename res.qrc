@@ -2,5 +2,8 @@
     <qresource prefix="/resource">
         <file>icons/arrowBack.png</file>
         <file>icons/arrowForward.png</file>
+        <file>icons/folder.png</file>
+        <file>icons/file.png</file>
+        <file>icons/file2.png</file>
     </qresource>
 </RCC>

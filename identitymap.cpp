@@ -100,33 +100,37 @@ void IMQuickAccess::quickMoveFolder()
 
 void IMQuickAccess::addQuickAccess(QString pathAbs)
 {
-    if (!search(pathAbs))
+    if (search(pathAbs))
+        return;
+
+    QFile file(pathAbs);
+    QFileInfo fileInfo(file);
+
+    if(file.exists() && fileInfo.isFile())
+    {
+        _quickAccessToFolders.push_back(pathAbs);
+        this->addItem(new QListWidgetItem(QIcon(":resource/icons/file.png"), fileInfo.fileName()));
+    }
+    else if (file.exists() && fileInfo.isDir())
     {
         QDir dir(pathAbs);
-        QFileInfo fileInfo(dir.absolutePath());
-
-        if (_quickAccessToFolders.size() == 5)
-        {
-            _quickAccessToFolders.pop_front();
-            _quickAccessToFolders.push_back(pathAbs);
-            this->takeItem(0);
-            this->addItem(fileInfo.fileName());
-
-            return;
-        }
-
+        fileInfo.setFile(dir.absolutePath());
         _quickAccessToFolders.push_back(pathAbs);
-        this->addItem(fileInfo.fileName());
+        this->addItem(new QListWidgetItem(QIcon(":resource/icons/folder.png"), fileInfo.fileName()));
     }
+}
+
+void IMQuickAccess::removeQuickAccess(int index)
+{
+    _quickAccessToFolders.removeAt(index);
+    this->takeItem(index);
 }
 
 bool IMQuickAccess::search(QString path)
 {
-    for (int i = 0; i < _quickAccessToFolders.length(); ++i)
-    {
-        if(path == _quickAccessToFolders.at(i))
-            return true;
-    }
+    int it = _quickAccessToFolders.indexOf(path);
+    if (it == -1)
+        return false;
 
-    return false;
+    return true;
 }

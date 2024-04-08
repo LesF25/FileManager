@@ -18,15 +18,15 @@ private:
     QSqlDatabase _dbUsers;
 };
 
-
 class IMQuickAccess : public QListWidget
 {
     Q_OBJECT
 public:
     IMQuickAccess() = default;
     ~IMQuickAccess() = default;
-    void addQuickAccess(QString);
 
+    void addQuickAccess(QString);
+    void removeQuickAccess(int);
 private:
     QList<QString> _quickAccessToFolders;
 
