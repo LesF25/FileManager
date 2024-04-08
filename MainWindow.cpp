@@ -1,4 +1,7 @@
 /*
+ * загрузка файлов
+ * Работа с файлами Microsoft Office
+ * Проверка почты
  * добавить контекстное меню при нажатии правой кнопки мыши (delete, закрепить на панели быстрого доступа)
  * сделать так, чтобы высвечивалось изначально окно для входа
 */
@@ -24,6 +27,7 @@ MainWindow::MainWindow(QWidget *parent)
     _ltMain = new QVBoxLayout();
     this->setLayout(_ltMain);
     this->setFixedSize(400, 380);
+    this->setWindowTitle("File Manager");
 
     _wndLogin = new LoginWindow();
     _wndFileContent = new FileContentWindow();
@@ -34,8 +38,6 @@ MainWindow::MainWindow(QWidget *parent)
     _wndFileContent->setWindowModality(Qt::ApplicationModal);
     _wndCreateFile->setWindowModality(Qt::ApplicationModal);
     _wndCreateFolder->setWindowModality(Qt::ApplicationModal);
-
-    this->setWindowTitle("File Manager");
     // ================ HEADER LAYOUT ================
 
     QHBoxLayout* ltHeader = new QHBoxLayout();
@@ -119,6 +121,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(_listFolderContents, &QListWidget::itemDoubleClicked, this, &MainWindow::moveFolder);
     connect(_listFolderContents, &QListWidget::itemClicked, this, &MainWindow::clearChoiceQuickList);
+
     connect(_listQuickAccess, &IMQuickAccess::itemDoubleClicked, this, &MainWindow::quickMoveFodler);
     connect(_listQuickAccess, &IMQuickAccess::signSendPath, this, &MainWindow::rcvConnectQuickAccess);
     connect(_listQuickAccess, &IMQuickAccess::itemClicked, this, &MainWindow::clearChoiceContentList);
@@ -145,8 +148,15 @@ void MainWindow::clearChoiceQuickList()
 
 void MainWindow::quickMoveFodler()
 {
-    if (_btBackFolder->isEnabled())
+    if (!_btBackFolder->isEnabled())
         _btBackFolder->setEnabled(true);
+
+    if (_btForwardFolder->isEnabled())
+        _btForwardFolder->setEnabled(false);
+
+    int it = _forwardFolderPath.indexOf(_currentPath);
+    while(it < _forwardFolderPath.size() - 1)
+        _forwardFolderPath.pop_back();
 
     emit signQuickMoveFolder();
 }
@@ -189,10 +199,7 @@ void MainWindow::moveForwardFolder()
     if (!_btBackFolder->isEnabled())
         _btBackFolder->setEnabled(true);
 
-    int it;
-    for (it = 0; it < _forwardFolderPath.size(); ++it)
-        if (_currentPath == _forwardFolderPath.at(it))
-            break;
+    int it = _forwardFolderPath.indexOf(_currentPath);
 
     ++it;
     QDir dirForward(_forwardFolderPath.at(it));
@@ -236,13 +243,11 @@ void MainWindow::moveFolder(QListWidgetItem* item)
         if (_btForwardFolder->isEnabled())
             _btForwardFolder->setEnabled(false);
 
-        int it;
-        for (it = 0; it < _forwardFolderPath.size(); ++it)
-            if (_currentPath == _forwardFolderPath.at(it))
-                break;
+        int it = _forwardFolderPath.indexOf(_currentPath);
 
-        while(it < _forwardFolderPath.size() - 1)
-            _forwardFolderPath.pop_back();
+        if (it != -1)
+            while(it < _forwardFolderPath.size() - 1)
+                _forwardFolderPath.pop_back();
 
         _currentPath = path + "/";
         _forwardFolderPath.push_back(_currentPath);
@@ -343,12 +348,16 @@ void MainWindow::exitAccount()
 
 void MainWindow::rcvConnectQuickAccess(QString path)
 {
-    // очистка текщуей дирректории
-
     _listFolderContents->clear();
-    _edCurrentFolder->setText(path);
+    _currentPath = path;
+    _forwardFolderPath.push_back(_currentPath);
 
-    displayContent(path);
+    int it = _backFolderPath.indexOf(_currentPath);
+    if (it == -1)
+        _backFolderPath.push_back(_currentPath);
+
+    _edCurrentFolder->setText(_currentPath);
+    displayContent(_currentPath);
 }
 
 void MainWindow::rcvConnectLogIn(QString username)
