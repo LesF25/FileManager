@@ -12,18 +12,33 @@
 #include <QToolBar>
 #include <QAction>
 
-#include <QDir>
-#include <QFile>
-#include <QFileInfo>
+class IMQuickAccess : public QListWidget
+{
+    Q_OBJECT
+public:
+    IMQuickAccess() = default;
+    ~IMQuickAccess() = default;
 
-class IMQuickAccess;
+    void addQuickAccess(QString);
+    void removeQuickAccess(int);
+private:
+    QList<QString> _quickAccessToFolders;
+
+    bool search(QString);
+
+signals:
+    void signSendPath(QString);
+
+public slots:
+    void quickMoveFolder(int);
+};
 
 class MainWindow : public QWidget
 {
     Q_OBJECT
 
 public:
-    MainWindow(QString, QWidget *parent = nullptr);
+    MainWindow(QString username, QWidget *parent = nullptr);
     ~MainWindow();
 
 private:
@@ -72,11 +87,11 @@ private slots:
     void changeFile();
 
     void moveFolder(QListWidgetItem*);
-    void clearChoiceContentList();
+    void clearChoiceContentList() {_listFolderContents->clearSelection();}
     void showContextMenuContentList(const QPoint& pos);
 
-    void quickMoveFolder();
-    void clearChoiceQuickList();
+    void quickMoveFolder() { emit signQuickMoveFolder(_listQuickAccess->currentRow()); }
+    void clearChoiceQuickList() {_listQuickAccess->clearSelection(); }
     void showContextMenuQuickList(const QPoint& pos);
     void fixFolder();
 
@@ -87,73 +102,4 @@ private slots:
 
 private:
     void displayContent(QString);
-};
-
-
-
-
-class IMQuickAccess : public QListWidget
-{
-    Q_OBJECT
-
-private:
-    QList<QString> _quickAccessToFolders;
-
-public:
-    IMQuickAccess() = default;
-
-    ~IMQuickAccess() = default;
-
-    void addQuickAccess(QString pathAbs)
-    {
-        if (search(pathAbs))
-            return;
-
-        QFile file(pathAbs);
-        QFileInfo fileInfo(file);
-
-        if(file.exists() && fileInfo.isFile())
-        {
-            _quickAccessToFolders.push_back(pathAbs);
-            this->addItem(new QListWidgetItem(QIcon(":resource/icons/file.png"), fileInfo.fileName()));
-
-            return;
-        }
-
-        QDir dir(pathAbs);
-        QFileInfo dirInfo(dir.absolutePath());
-
-        if (dir.exists() && dirInfo.isDir())
-        {
-            _quickAccessToFolders.push_back(pathAbs);
-            this->addItem(new QListWidgetItem(QIcon(":resource/icons/folder.png"), dirInfo.fileName()));
-
-            return;
-        }
-    }
-
-    void removeQuickAccess(int index)
-    {
-        _quickAccessToFolders.removeAt(index);
-        this->takeItem(index);
-    }
-
-private:
-    bool search(QString path)
-    {
-        int it = _quickAccessToFolders.indexOf(path);
-        if (it == -1)
-            return false;
-
-        return true;
-    }
-
-signals:
-    void signSendPath(QString);
-
-public slots:
-    void quickMoveFolder(int index)
-    {
-        emit signSendPath(_quickAccessToFolders.at(index));
-    }
 };

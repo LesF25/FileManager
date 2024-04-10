@@ -7,6 +7,7 @@
  * Работа с файлами Microsoft Office
  * Проверка почты
 */
+
 #include "MainWindow.h"
 #include <private/qzipreader_p.h>
 #include <private/qzipwriter_p.h>
@@ -18,31 +19,28 @@
 #include <QFrame>
 #include <QWidgetItem>
 
-#include <QDir>
-#include <QFile>
-#include <QFileInfo>
 #include <QFileInfoList>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 #include <QMenu>
 
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(QString username, QWidget *parent)
     : QWidget(parent)
 {
+
     _ltMain = new QVBoxLayout();
     this->setLayout(_ltMain);
     this->setFixedSize(400, 380);
     this->setWindowTitle("File Manager");
 
-    _wndLogin = new LoginWindow();
     _wndFileContent = new FileContentWindow();
     _wndCreateFile = new CreateFileWindow();
     _wndCreateFolder = new CreateFolderWindow();
 
-    _wndLogin->setWindowModality(Qt::ApplicationModal);
-    _wndFileContent->setWindowModality(Qt::ApplicationModal);
-    _wndCreateFile->setWindowModality(Qt::ApplicationModal);
-    _wndCreateFolder->setWindowModality(Qt::ApplicationModal);
+    _username = username;
+    _currentPath = "C:/Users/getd8/Desktop/FileManager/users/" + _username + "/";
+    _forwardFolderPath.push_back(_currentPath);
+    _backFolderPath.push_back(_currentPath);
 
 // ================ Панель инструментов ================
     QWidget* spacer1 = new QWidget();
@@ -69,9 +67,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     _actBackFolder->setEnabled(false);
     _actForwardFolder->setEnabled(false);
-    _actCreateFolder->setEnabled(false);
-    _actCreateFile->setEnabled(false);
-    _actDelete->setEnabled(false);
     _actDownload->setEnabled(false);
 
     QAction* empty = new QAction(this);
@@ -96,6 +91,7 @@ MainWindow::MainWindow(QWidget *parent)
     _edCurrentFolder->setReadOnly(true);
     _edCurrentFolder->setPlaceholderText("Log in to your account.");
     _edCurrentFolder->setFixedHeight(30);
+    _edCurrentFolder->setText(_currentPath);
 
     ltTop->addWidget(_edCurrentFolder);
 
@@ -116,6 +112,7 @@ MainWindow::MainWindow(QWidget *parent)
     _ltMain->addLayout(ltTop);
     _ltMain->addLayout(ltAverage);
     _ltMain->addWidget(_toolBar);
+    displayContent(_currentPath);
 
     connect(_actCreateFile, &QAction::triggered, this, &MainWindow::createFile);
     connect(this, &MainWindow::signCreateFile, _wndCreateFile, &CreateFileWindow::rcvConnect);
@@ -131,9 +128,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(_actForwardFolder, &QAction::triggered, this, &MainWindow::moveForwardFolder);
     connect(_actDelete, &QAction::triggered, this, &MainWindow::deleteElement);
     connect(_actExitAccount, &QAction::triggered, this, &MainWindow::exitAccount);
-
-    connect(_wndLogin, &LoginWindow::logIn, this, &MainWindow::rcvConnectLogIn);
-    connect(_wndLogin, &LoginWindow::signCloseWindow, this, &MainWindow::setAccessMainWindow);
 
     connect(_wndFileContent, &FileContentWindow::fileSaved, this, &MainWindow::rcvConnectSaveFile);
     connect(_wndFileContent, &FileContentWindow::signCloseWindow, this, &MainWindow::setAccessMainWindow);
@@ -212,6 +206,18 @@ void MainWindow::createFolder()
     this->close();
     _wndCreateFolder->show();
     emit signCreateFolder(_edCurrentFolder->text());
+}
+
+void MainWindow::clearChoiceContentList() {
+    _listFolderContents->clearSelection();
+}
+
+void MainWindow::clearChoiceQuickList() {
+    _listQuickAccess->clearSelection();
+}
+
+void MainWindow::quickMoveFolder() {
+    emit signQuickMoveFolder(_listQuickAccess->currentRow());
 }
 
 void MainWindow::moveBackFolder()
@@ -329,9 +335,9 @@ void MainWindow::changeFile()
 
 void MainWindow::deleteElement()
 {
-    if (_listFolderContents->currentItem() == nullptr)
+    if (_listFolderContents->currentItem() == nullptr || !_listFolderContents->currentItem()->isSelected())
     {
-        QMessageBox::warning(0, "Error", "Select the item to delete.");
+        QMessageBox::warning(0, "Error", "The item could not be deleted.");
         return;
     }
     QString path = _currentPath + _listFolderContents->currentItem()->text();
@@ -382,7 +388,7 @@ void MainWindow::exitAccount()
     _listQuickAccess->clear();
 
     this->close();
-    _wndLogin->show();
+    emit signExitAccount();
 }
 
 void MainWindow::rcvConnectQuickAccess(QString path)
@@ -417,23 +423,6 @@ void MainWindow::rcvConnectQuickAccess(QString path)
         _edCurrentFolder->setText(_currentPath);
         displayContent(_currentPath);
     }
-}
-
-void MainWindow::rcvConnectLogIn(QString username)
-{
-    _username = username;
-    _currentPath = "C:/Users/getd8/Desktop/FileManager/users/" + _username + "/";
-    _forwardFolderPath.push_back(_currentPath);
-    _backFolderPath.push_back(_currentPath);
-    _edCurrentFolder->setText(_currentPath);
-
-    _actCreateFile->setEnabled(true);
-    _actCreateFolder->setEnabled(true);
-    _actDelete->setEnabled(true);
-
-    displayContent(_currentPath);
-
-    this->show();
 }
 
 void MainWindow::rcvConnectSaveFile(QString fileName)
@@ -472,5 +461,4 @@ MainWindow::~MainWindow()
     delete _wndCreateFile;
     delete _wndCreateFolder;
     delete _wndFileContent;
-    delete _wndLogin;
 }

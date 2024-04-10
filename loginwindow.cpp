@@ -24,9 +24,9 @@ LoginWindow::LoginWindow(QWidget *parent)
     //==========================================
     QVBoxLayout* ltBody = new QVBoxLayout();
 
-    QLabel* lbLogin = new QLabel("Login", this);
-    lbLogin->setFont(QFont("Calibri", 19.5));
-    lbLogin->setAlignment(Qt::AlignCenter);
+    _lbHeader = new QLabel("Login", this);
+    _lbHeader->setFont(QFont("Calibri", 19.5));
+    _lbHeader->setAlignment(Qt::AlignCenter);
 
     _edEmail = new QLineEdit(this);
     _edEmail->setPlaceholderText("Email");
@@ -48,7 +48,7 @@ LoginWindow::LoginWindow(QWidget *parent)
     _edPassword->setFixedHeight(28);
     _edPassword->setFont(QFont(_edPassword->font().defaultFamily(), 10));
 
-    ltBody->addWidget(lbLogin);
+    ltBody->addWidget(_lbHeader);
     ltBody->addWidget(_edLogin);
     ltBody->addWidget(_edPassword);
     ltBody->addWidget(_edEmail);
@@ -77,12 +77,6 @@ LoginWindow::LoginWindow(QWidget *parent)
     //==========================================
     connect(_btSignUp, &QPushButton::clicked, this, &LoginWindow::signUp);
     connect(_btSignIn, &QPushButton::clicked, this, &LoginWindow::signIn);
-}
-
-void LoginWindow::closeEvent(QCloseEvent *event)
-{
-    emit signCloseWindow();
-    event->accept();
 }
 
 void LoginWindow::signUp()
@@ -132,8 +126,4 @@ void LoginWindow::signIn()
 
     this->close();
     emit logIn(_edLogin->text());
-}
-
-LoginWindow::~LoginWindow()
-{
 }

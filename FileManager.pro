@@ -11,17 +11,17 @@ CONFIG += c++17
 SOURCES += \
     createwindows.cpp \
     filecontentwindow.cpp \
-    identitymap.cpp \
     loginwindow.cpp \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    proxy.cpp
 
 HEADERS += \
     createwindows.h \
     filecontentwindow.h \
-    identitymap.h \
     loginwindow.h \
-    mainwindow.h
+    mainwindow.h \
+    proxy.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
