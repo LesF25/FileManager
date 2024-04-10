@@ -4,5 +4,10 @@
         <file>icons/arrowForward.png</file>
         <file>icons/folder.png</file>
         <file>icons/file.png</file>
+        <file>icons/createFolder.png</file>
+        <file>icons/exitAccount.png</file>
+        <file>icons/delete.png</file>
+        <file>icons/download.png</file>
+        <file>icons/createFile.png</file>
     </qresource>
 </RCC>

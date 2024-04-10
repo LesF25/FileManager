@@ -1,13 +1,15 @@
 /*
  * Сделать так, чтобы высвечивалось изначально окно для входа
- * Заменить в кнопках слова на значки и добавить кнопку загрузки файлов
- * Возможность архивации папок, копирования и перемещения
- * Темная/светлая тема
+ * Возможность архивации папок, копирования, переименования
+ * Выделение множества объектов в QListWidget
 
+ * Темная/светлая тема
  * Работа с файлами Microsoft Office
  * Проверка почты
 */
 #include "MainWindow.h"
+#include <private/qzipreader_p.h>
+#include <private/qzipwriter_p.h>
 
 #include <QHBoxLayout>
 #include <QLabel>
@@ -42,8 +44,52 @@ MainWindow::MainWindow(QWidget *parent)
     _wndCreateFile->setWindowModality(Qt::ApplicationModal);
     _wndCreateFolder->setWindowModality(Qt::ApplicationModal);
 
-// ================ Верхний уровень ================
+// ================ Панель инструментов ================
+    QWidget* spacer1 = new QWidget();
+    QWidget* spacer2 = new QWidget();
 
+    spacer1->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    spacer2->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    _actBackFolder = new QAction(this);
+    _actForwardFolder = new QAction(this);
+    _actCreateFolder = new QAction(this);
+    _actCreateFile = new QAction(this);
+    _actDelete = new QAction(this);
+    _actExitAccount = new QAction(this);
+    _actDownload = new QAction(this);
+
+    _actBackFolder->setIcon(QIcon(":resource/icons/arrowBack.png"));
+    _actForwardFolder->setIcon(QIcon(":resource/icons/arrowForward.png"));
+    _actCreateFolder->setIcon(QIcon(":resource/icons/createFolder.png"));
+    _actCreateFile->setIcon(QIcon(":resource/icons/createFile.png"));
+    _actDelete->setIcon(QIcon(":resource/icons/delete.png"));
+    _actDownload->setIcon(QIcon(":resource/icons/download.png"));
+    _actExitAccount->setIcon(QIcon(":resource/icons/exitAccount.png"));
+
+    _actBackFolder->setEnabled(false);
+    _actForwardFolder->setEnabled(false);
+    _actCreateFolder->setEnabled(false);
+    _actCreateFile->setEnabled(false);
+    _actDelete->setEnabled(false);
+    _actDownload->setEnabled(false);
+
+    QAction* empty = new QAction(this);
+    empty->setEnabled(false);
+
+    _toolBar = new QToolBar(this);
+    _toolBar->addAction(_actBackFolder);
+    _toolBar->addAction(_actForwardFolder);
+    _toolBar->addWidget(spacer1);
+    _toolBar->addAction(_actCreateFolder);
+    _toolBar->addAction(_actCreateFile);
+    _toolBar->addAction(_actDelete);
+    _toolBar->addAction(_actDownload);
+    _toolBar->addWidget(spacer2);
+    _toolBar->addAction(empty);
+    _toolBar->addAction(_actExitAccount);
+
+// ================ Верхний уровень ================
     QHBoxLayout* ltTop = new QHBoxLayout();
 
     _edCurrentFolder = new QLineEdit(this);
@@ -53,7 +99,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     ltTop->addWidget(_edCurrentFolder);
 
-    // ================= BODY LAYOUT =================
+// ================= BODY LAYOUT ===================
     QVBoxLayout* ltAverage = new QVBoxLayout();
 
     _listFolderContents = new QListWidget();
@@ -66,53 +112,25 @@ MainWindow::MainWindow(QWidget *parent)
     ltAverage->addWidget(_listFolderContents);
     ltAverage->addWidget(_listQuickAccess);
 
-    // ================ FOOTER LAYOUT ================
-    QVBoxLayout* ltLow = new QVBoxLayout();
-
-    QHBoxLayout* ltFile = new QHBoxLayout();
-    _btCreateFile = new QPushButton("Create File", this);
-    _btCreateFolder = new QPushButton("Create Folder", this);
-    _btDelete = new QPushButton("Delete", this);
-
-    _btCreateFile->setEnabled(false);
-    _btCreateFolder->setEnabled(false);
-    _btDelete->setEnabled(false);
-
-    QHBoxLayout* ltNavigation = new QHBoxLayout();
-    _btExitAccount = new QPushButton("Exit Account", this);
-    _btBackFolder = new QPushButton(this);
-    _btBackFolder->setIcon(QIcon(":/resource/icons/arrowBack.png"));
-    _btForwardFolder = new QPushButton(this);
-    _btForwardFolder->setIcon(QIcon(":/resource/icons/arrowForward.png"));
-
-    _btBackFolder->setEnabled(false);
-    _btForwardFolder->setEnabled(false);
-
-    ltFile->addWidget(_btCreateFile);
-    ltFile->addWidget(_btDelete);
-    ltFile->addWidget(_btCreateFolder);
-
-    ltNavigation->addWidget(_btBackFolder);
-    ltNavigation->addWidget(_btExitAccount);
-    ltNavigation->addWidget(_btForwardFolder);
-
-    ltLow->addLayout(ltFile);
-    ltLow->addLayout(ltNavigation);
-    // ===============================================
-
+// ===============================================
     _ltMain->addLayout(ltTop);
     _ltMain->addLayout(ltAverage);
-    _ltMain->addLayout(ltLow);
+    _ltMain->addWidget(_toolBar);
 
-    connect(_btCreateFile, &QPushButton::clicked, this, &MainWindow::createFile);
+    connect(_actCreateFile, &QAction::triggered, this, &MainWindow::createFile);
     connect(this, &MainWindow::signCreateFile, _wndCreateFile, &CreateFileWindow::rcvConnect);
     connect(_wndCreateFile, &CreateFileWindow::signCreateFile, this, &MainWindow::displayContentFile);
     connect(_wndCreateFile, &CreateFileWindow::signCloseWindow, this, &MainWindow::setAccessMainWindow);
 
-    connect(_btCreateFolder, &QPushButton::clicked, this, &MainWindow::createFolder);
+    connect(_actCreateFolder, &QAction::triggered, this, &MainWindow::createFolder);
     connect(this, &MainWindow::signCreateFolder, _wndCreateFolder, &CreateFolderWindow::rcvConnect);
     connect(_wndCreateFolder, &CreateFolderWindow::signCreateFolder, this, &MainWindow::displayFolder);
     connect(_wndCreateFolder, &CreateFolderWindow::signCloseWindow, this, &MainWindow::setAccessMainWindow);
+
+    connect(_actBackFolder, &QAction::triggered, this, &MainWindow::moveBackFolder);
+    connect(_actForwardFolder, &QAction::triggered, this, &MainWindow::moveForwardFolder);
+    connect(_actDelete, &QAction::triggered, this, &MainWindow::deleteElement);
+    connect(_actExitAccount, &QAction::triggered, this, &MainWindow::exitAccount);
 
     connect(_wndLogin, &LoginWindow::logIn, this, &MainWindow::rcvConnectLogIn);
     connect(_wndLogin, &LoginWindow::signCloseWindow, this, &MainWindow::setAccessMainWindow);
@@ -120,11 +138,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(_wndFileContent, &FileContentWindow::fileSaved, this, &MainWindow::rcvConnectSaveFile);
     connect(_wndFileContent, &FileContentWindow::signCloseWindow, this, &MainWindow::setAccessMainWindow);
     connect(this, &MainWindow::signSendCurrentFile, _wndFileContent, &FileContentWindow::rcvCurrentFile);
-
-    connect(_btDelete, &QPushButton::clicked, this, &MainWindow::deleteElement);
-    connect(_btBackFolder, &QPushButton::clicked, this, &MainWindow::moveBackFolder);
-    connect(_btForwardFolder, &QPushButton::clicked, this, &MainWindow::moveForwardFolder);
-    connect(_btExitAccount, &QPushButton::clicked, this, &MainWindow::exitAccount);
 
     connect(_listFolderContents, &QListWidget::itemDoubleClicked, this, &MainWindow::moveFolder);
     connect(_listFolderContents, &QListWidget::itemClicked, this, &MainWindow::clearChoiceQuickList);
@@ -203,12 +216,12 @@ void MainWindow::createFolder()
 
 void MainWindow::moveBackFolder()
 {
-    if (!_btForwardFolder->isEnabled())
-        _btForwardFolder->setEnabled(true);
+    if (!_actForwardFolder->isEnabled())
+        _actForwardFolder->setEnabled(true);
 
     QString path = _backFolderPath.at(0);
     if (path == _backFolderPath.at(_backFolderPath.length() - 2))
-        _btBackFolder->setEnabled(false);
+        _actBackFolder->setEnabled(false);
 
     _listFolderContents->clear();
     _backFolderPath.pop_back();
@@ -220,8 +233,8 @@ void MainWindow::moveBackFolder()
 
 void MainWindow::moveForwardFolder()
 {
-    if (!_btBackFolder->isEnabled())
-        _btBackFolder->setEnabled(true);
+    if (!_actBackFolder->isEnabled())
+        _actBackFolder->setEnabled(true);
 
     int it = _forwardFolderPath.indexOf(_currentPath);
 
@@ -232,15 +245,15 @@ void MainWindow::moveForwardFolder()
         while(_forwardFolderPath.size() != it)
             _forwardFolderPath.pop_back();
 
-        if (_btForwardFolder->isEnabled())
-            _btForwardFolder->setEnabled(false);
+        if (_actForwardFolder->isEnabled())
+            _actForwardFolder->setEnabled(false);
 
         QMessageBox::warning(0, "Error", "The directory was not found.");
         return;
     }
 
-    if (it == _forwardFolderPath.size() - 1 && _btForwardFolder->isEnabled())
-        _btForwardFolder->setEnabled(false);
+    if (it == _forwardFolderPath.size() - 1 && _actForwardFolder->isEnabled())
+        _actForwardFolder->setEnabled(false);
 
     _listFolderContents->clear();
 
@@ -261,11 +274,11 @@ void MainWindow::moveFolder(QListWidgetItem* item)
         emit signOpenFile();
     else if (file.exists() && fileInfo.isDir())
     {
-        if (!_btBackFolder->isEnabled())
-            _btBackFolder->setEnabled(true);
+        if (!_actBackFolder->isEnabled())
+            _actBackFolder->setEnabled(true);
 
-        if (_btForwardFolder->isEnabled())
-            _btForwardFolder->setEnabled(false);
+        if (_actForwardFolder->isEnabled())
+            _actForwardFolder->setEnabled(false);
 
         int it = _forwardFolderPath.indexOf(_currentPath);
 
@@ -385,11 +398,11 @@ void MainWindow::rcvConnectQuickAccess(QString path)
     }
     else if (file.exists() && fileInfo.isDir())
     {
-        if (!_btBackFolder->isEnabled())
-            _btBackFolder->setEnabled(true);
+        if (!_actBackFolder->isEnabled())
+            _actBackFolder->setEnabled(true);
 
-        if (_btForwardFolder->isEnabled())
-            _btForwardFolder->setEnabled(false);
+        if (_actForwardFolder->isEnabled())
+            _actForwardFolder->setEnabled(false);
 
         int itForward = _forwardFolderPath.indexOf(_currentPath);
         if (itForward != -1)
@@ -414,11 +427,12 @@ void MainWindow::rcvConnectLogIn(QString username)
     _backFolderPath.push_back(_currentPath);
     _edCurrentFolder->setText(_currentPath);
 
-    _btCreateFile->setEnabled(true);
-    _btCreateFolder->setEnabled(true);
-    _btDelete->setEnabled(true);
+    _actCreateFile->setEnabled(true);
+    _actCreateFolder->setEnabled(true);
+    _actDelete->setEnabled(true);
 
     displayContent(_currentPath);
+
     this->show();
 }
 

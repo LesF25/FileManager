@@ -10,6 +10,8 @@
 #include <QPushButton>
 #include <QComboBox>
 #include <QList>
+#include <QToolBar>
+#include <QAction>
 
 class MainWindow : public QWidget
 {
@@ -26,15 +28,18 @@ private:
     QList <QString> _backFolderPath;
 
     QVBoxLayout* _ltMain;
+    QToolBar* _toolBar;
     QLineEdit* _edCurrentFolder;
     QListWidget* _listFolderContents;
     IMQuickAccess* _listQuickAccess;
-    QPushButton* _btCreateFile;
-    QPushButton* _btCreateFolder;
-    QPushButton* _btDelete;
-    QPushButton* _btExitAccount;
-    QPushButton* _btBackFolder;
-    QPushButton* _btForwardFolder;
+
+    QAction* _actBackFolder;
+    QAction* _actForwardFolder;
+    QAction* _actCreateFolder;
+    QAction* _actCreateFile;
+    QAction* _actDelete;
+    QAction* _actExitAccount;
+    QAction* _actDownload;
 
     LoginWindow* _wndLogin;
     FileContentWindow* _wndFileContent;

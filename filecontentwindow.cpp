@@ -50,6 +50,7 @@ void FileContentWindow::closeEvent(QCloseEvent *event)
 
 void FileContentWindow::closeWnd()
 {
+    _plFileContents->clear();
     this->close();
     emit signCloseWindow();
 }
@@ -89,6 +90,8 @@ void FileContentWindow::saveFileContents()
     }
 
     QFileInfo fileInfo(_file);
+
+    _plFileContents->clear();
     this->close();
     emit fileSaved(fileInfo.fileName());
 }
