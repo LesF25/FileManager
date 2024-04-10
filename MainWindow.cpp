@@ -1,9 +1,11 @@
 /*
- * загрузка файлов
+ * Сделать так, чтобы высвечивалось изначально окно для входа
+ * Заменить в кнопках слова на значки и добавить кнопку загрузки файлов
+ * Возможность архивации папок, копирования и перемещения
+ * Темная/светлая тема
+
  * Работа с файлами Microsoft Office
  * Проверка почты
- * добавить контекстное меню при нажатии правой кнопки мыши (delete, закрепить на панели быстрого доступа)
- * сделать так, чтобы высвечивалось изначально окно для входа
 */
 #include "MainWindow.h"
 
@@ -59,7 +61,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     _listQuickAccess = new IMQuickAccess();
     _listQuickAccess->setFixedHeight(95);
-//    _listQuickAccess->setContextMenuPolicy(Qt::CustomContextMenu);
+    _listQuickAccess->setContextMenuPolicy(Qt::CustomContextMenu);
 
     ltAverage->addWidget(_listFolderContents);
     ltAverage->addWidget(_listQuickAccess);
@@ -129,9 +131,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(_listFolderContents, &QListWidget::customContextMenuRequested, this, &MainWindow::showContextMenuContentList);
 
     connect(_listQuickAccess, &IMQuickAccess::itemDoubleClicked, this, &MainWindow::quickMoveFolder);
+    connect(this, &MainWindow::signQuickMoveFolder, _listQuickAccess, &IMQuickAccess::quickMoveFolder);
     connect(_listQuickAccess, &IMQuickAccess::signSendPath, this, &MainWindow::rcvConnectQuickAccess);
     connect(_listQuickAccess, &IMQuickAccess::itemClicked, this, &MainWindow::clearChoiceContentList);
-    connect(this, &MainWindow::signQuickMoveFolder, _listQuickAccess, &IMQuickAccess::quickMoveFolder);
+    connect(_listQuickAccess, &IMQuickAccess::customContextMenuRequested, this, &MainWindow::showContextMenuQuickList);
 
     connect(this, &MainWindow::signOpenFile, this, &MainWindow::changeFile);
 }
@@ -153,7 +156,7 @@ void MainWindow::detachFolder()
     _listQuickAccess->removeQuickAccess(_listQuickAccess->currentRow());
 }
 
-void MainWindow::showContextMenuQuickList(const QPoint & pos)
+void MainWindow::showContextMenuQuickList(const QPoint& pos)
 {
     QListWidgetItem *item = _listQuickAccess->itemAt(pos);
     if (item == nullptr)
@@ -274,7 +277,6 @@ void MainWindow::moveFolder(QListWidgetItem* item)
         _forwardFolderPath.push_back(_currentPath);
         _backFolderPath.push_back(_currentPath);
 
-
         _listFolderContents->clear();
         _edCurrentFolder->setText(_currentPath);
         displayContent(_currentPath);
@@ -359,9 +361,12 @@ void MainWindow::deleteElement()
 
 void MainWindow::exitAccount()
 {
-    _edCurrentFolder->clear();
     _currentPath.clear();
+    _edCurrentFolder->clear();
+    _forwardFolderPath.clear();
+    _backFolderPath.clear();
     _listFolderContents->clear();
+    _listQuickAccess->clear();
 
     this->close();
     _wndLogin->show();
@@ -387,17 +392,15 @@ void MainWindow::rcvConnectQuickAccess(QString path)
             _btForwardFolder->setEnabled(false);
 
         int itForward = _forwardFolderPath.indexOf(_currentPath);
-        while(itForward < _forwardFolderPath.size())
-            _forwardFolderPath.pop_back();
+        if (itForward != -1)
+            while(itForward < _forwardFolderPath.size() - 1)
+                _forwardFolderPath.pop_back();
 
-        _listFolderContents->clear();
         _currentPath = path;
         _forwardFolderPath.push_back(_currentPath);
+        _backFolderPath.push_back(_currentPath);
 
-        int itBack = _backFolderPath.indexOf(_currentPath);
-        if (itBack == -1)
-            _backFolderPath.push_back(_currentPath);
-
+        _listFolderContents->clear();
         _edCurrentFolder->setText(_currentPath);
         displayContent(_currentPath);
     }
@@ -444,7 +447,7 @@ void MainWindow::displayContent(QString path)
     {
         QFileInfo fileInfo = list.at(i);
         if (fileInfo.isFile())
-            _listFolderContents->addItem(new QListWidgetItem(QIcon(":resource/icons/file2.png"), fileInfo.fileName()));
+            _listFolderContents->addItem(new QListWidgetItem(QIcon(":resource/icons/file.png"), fileInfo.fileName()));
         else
             _listFolderContents->addItem(new QListWidgetItem(QIcon(":resource/icons/folder.png"), fileInfo.fileName()));
     }

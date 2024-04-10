@@ -36,6 +36,6 @@ signals:
     void signSendPath(QString);
 
 public slots:
-    void quickMoveFolder();
+    void quickMoveFolder(int);
 
 };

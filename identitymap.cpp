@@ -93,9 +93,9 @@ bool IMLoginSystem::signUp(QString username, QString password, QString email)
 }
 
 // ================================================================================
-void IMQuickAccess::quickMoveFolder()
+void IMQuickAccess::quickMoveFolder(int index)
 {
-    emit signSendPath(_quickAccessToFolders[this->currentRow()]);
+    emit signSendPath(_quickAccessToFolders.at(index));
 }
 
 void IMQuickAccess::addQuickAccess(QString pathAbs)
@@ -110,13 +110,19 @@ void IMQuickAccess::addQuickAccess(QString pathAbs)
     {
         _quickAccessToFolders.push_back(pathAbs);
         this->addItem(new QListWidgetItem(QIcon(":resource/icons/file.png"), fileInfo.fileName()));
+
+        return;
     }
-    else if (file.exists() && fileInfo.isDir())
+
+    QDir dir(pathAbs);
+    QFileInfo dirInfo(dir.absolutePath());
+
+    if (dir.exists() && dirInfo.isDir())
     {
-        QDir dir(pathAbs);
-        fileInfo.setFile(dir.absolutePath());
         _quickAccessToFolders.push_back(pathAbs);
-        this->addItem(new QListWidgetItem(QIcon(":resource/icons/folder.png"), fileInfo.fileName()));
+        this->addItem(new QListWidgetItem(QIcon(":resource/icons/folder.png"), dirInfo.fileName()));
+
+        return;
     }
 }
 

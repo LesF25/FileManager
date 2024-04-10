@@ -47,7 +47,7 @@ signals:
 
     void signCreateFile(QString);
     void signCreateFolder(QString);
-    void signQuickMoveFolder();
+    void signQuickMoveFolder(int);
 
 private slots:
     void createFile();
@@ -63,11 +63,11 @@ private slots:
 
     void moveFolder(QListWidgetItem*);
     void clearChoiceContentList() {_listFolderContents->clearSelection();}
-    void showContextMenuContentList(const QPoint&);
+    void showContextMenuContentList(const QPoint& pos);
 
-    void quickMoveFolder() { emit signQuickMoveFolder(); }
+    void quickMoveFolder() { emit signQuickMoveFolder(_listQuickAccess->currentRow()); }
     void clearChoiceQuickList() {_listQuickAccess->clearSelection();}
-    void showContextMenuQuickList(const QPoint &);
+    void showContextMenuQuickList(const QPoint& pos);
     void fixFolder();
 
     void rcvConnectLogIn(QString);
