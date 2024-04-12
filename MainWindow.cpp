@@ -1,7 +1,7 @@
-/*
- * Сделать так, чтобы высвечивалось изначально окно для входа
- * Возможность архивации папок, копирования, переименования
+/* заменить QListWidget быстрого доступа на сворачиваемый список, а QListWidget на виджет похожий на таблицу, содержащий несколько областей по типу дата создания, размер и т.д.
  * Выделение множества объектов в QListWidget
+ * загрузка файлов
+ * открывать картинки
 
  * Темная/светлая тема
  * Работа с файлами Microsoft Office
@@ -9,8 +9,8 @@
 */
 
 #include "MainWindow.h"
-#include <private/qzipreader_p.h>
-#include <private/qzipwriter_p.h>
+// #include <private/qzipreader_p.h>
+// #include <private/qzipwriter_p.h>
 
 #include <QHBoxLayout>
 #include <QLabel>
@@ -27,21 +27,22 @@
 MainWindow::MainWindow(QString username, QWidget *parent)
     : QWidget(parent)
 {
-
     _ltMain = new QVBoxLayout();
     this->setLayout(_ltMain);
-    this->setFixedSize(400, 380);
+    this->setFixedSize(500, 380);
+    this->setWindowIcon(QIcon(":resource/icons/FileManager.png"));
     this->setWindowTitle("File Manager");
 
     _wndFileContent = new FileContentWindow();
     _wndCreateFile = new CreateFileWindow();
     _wndCreateFolder = new CreateFolderWindow();
+    _wndRenameFile = new RenameFileWindow();
+    _wndRenameFolder = new RenameFolderWindow();
 
     _username = username;
     _currentPath = "C:/Users/getd8/Desktop/FileManager/users/" + _username + "/";
     _forwardFolderPath.push_back(_currentPath);
     _backFolderPath.push_back(_currentPath);
-
 // ================ Панель инструментов ================
     QWidget* spacer1 = new QWidget();
     QWidget* spacer2 = new QWidget();
@@ -69,6 +70,14 @@ MainWindow::MainWindow(QString username, QWidget *parent)
     _actForwardFolder->setEnabled(false);
     _actDownload->setEnabled(false);
 
+    _actBackFolder->setToolTip("Move Back");
+    _actForwardFolder->setToolTip("Move Forward");
+    _actCreateFolder->setToolTip("Create Folder");
+    _actCreateFile->setToolTip("Create File");
+    _actDelete->setToolTip("Delete");
+    _actExitAccount->setToolTip("Exit Account");
+    _actDownload->setToolTip("Download");
+
     QAction* empty = new QAction(this);
     empty->setEnabled(false);
 
@@ -84,6 +93,10 @@ MainWindow::MainWindow(QString username, QWidget *parent)
     _toolBar->addAction(empty);
     _toolBar->addAction(_actExitAccount);
 
+// ================= Context Menu ==================
+    _actInsert = new QAction("Insert", this);
+    _actInsert->setEnabled(false);
+
 // ================ Верхний уровень ================
     QHBoxLayout* ltTop = new QHBoxLayout();
 
@@ -97,22 +110,30 @@ MainWindow::MainWindow(QString username, QWidget *parent)
 
 // ================= BODY LAYOUT ===================
     QVBoxLayout* ltAverage = new QVBoxLayout();
+    QHBoxLayout* ltList = new QHBoxLayout();
 
     _listFolderContents = new QListWidget();
     _listFolderContents->setContextMenuPolicy(Qt::CustomContextMenu);
 
     _listQuickAccess = new IMQuickAccess();
-    _listQuickAccess->setFixedHeight(95);
+    _listQuickAccess->setMaximumWidth(120);
     _listQuickAccess->setContextMenuPolicy(Qt::CustomContextMenu);
 
-    ltAverage->addWidget(_listFolderContents);
-    ltAverage->addWidget(_listQuickAccess);
+    ltList->addWidget(_listQuickAccess);
+    ltList->addWidget(_listFolderContents);
+    ltAverage->addLayout(ltList);
+//    ltAverage->addWidget(_listFolderContents);
+//    ltAverage->addWidget(_listQuickAccess);
 
 // ===============================================
     _ltMain->addLayout(ltTop);
     _ltMain->addLayout(ltAverage);
     _ltMain->addWidget(_toolBar);
     displayContent(_currentPath);
+
+// ===============================================
+
+    connect(_actInsert, &QAction::triggered, this, &MainWindow::insertElement);
 
     connect(_actCreateFile, &QAction::triggered, this, &MainWindow::createFile);
     connect(this, &MainWindow::signCreateFile, _wndCreateFile, &CreateFileWindow::rcvConnect);
@@ -133,6 +154,14 @@ MainWindow::MainWindow(QString username, QWidget *parent)
     connect(_wndFileContent, &FileContentWindow::signCloseWindow, this, &MainWindow::setAccessMainWindow);
     connect(this, &MainWindow::signSendCurrentFile, _wndFileContent, &FileContentWindow::rcvCurrentFile);
 
+    connect(this, &MainWindow::signRenameFile, _wndRenameFile, &RenameFileWindow::rcvConnect);
+    connect(_wndRenameFile, &RenameFileWindow::signRenameFile, this, &MainWindow::rcvConnectRename);
+    connect(_wndRenameFile, &RenameFileWindow::signCloseWindow, this, &MainWindow::setAccessMainWindow);
+
+    connect(this, &MainWindow::signRenameFolder, _wndRenameFolder, &RenameFolderWindow::rcvConnect);
+    connect(_wndRenameFolder, &RenameFolderWindow::signRenameFolder, this, &MainWindow::rcvConnectRename);
+    connect(_wndRenameFolder, &RenameFolderWindow::signCloseWindow, this, &MainWindow::setAccessMainWindow);
+
     connect(_listFolderContents, &QListWidget::itemDoubleClicked, this, &MainWindow::moveFolder);
     connect(_listFolderContents, &QListWidget::itemClicked, this, &MainWindow::clearChoiceQuickList);
     connect(_listFolderContents, &QListWidget::customContextMenuRequested, this, &MainWindow::showContextMenuContentList);
@@ -144,6 +173,145 @@ MainWindow::MainWindow(QString username, QWidget *parent)
     connect(_listQuickAccess, &IMQuickAccess::customContextMenuRequested, this, &MainWindow::showContextMenuQuickList);
 
     connect(this, &MainWindow::signOpenFile, this, &MainWindow::changeFile);
+}
+
+void MainWindow::rcvConnectRename(QString newElementName)
+{
+    QFile file(_currentPath + _listFolderContents->currentItem()->text());
+    QFileInfo fileInfo(file);
+
+    if (fileInfo.exists() && fileInfo.isFile())
+    {
+        int check = _listQuickAccess->getNumRow(_beforeRenameFile);
+        if (check != -1)
+            _listQuickAccess->removeQuickAccess(check);
+        _beforeRenameFile.clear();
+        file.rename(newElementName);
+
+        _listQuickAccess->addQuickAccess(newElementName);
+        _listFolderContents->clear();
+        displayContent(_currentPath);
+        this->show();
+
+        return;
+    }
+
+    if(fileInfo.exists() && fileInfo.isDir())
+    {
+        int check = _listQuickAccess->getNumRow(_beforeRenameFile);
+        if (check != -1)
+            _listQuickAccess->removeQuickAccess(check);
+        _beforeRenameFile.clear();
+
+        QDir dir(_currentPath + _listFolderContents->currentItem()->text() + "/");
+        dir.rename(dir.absolutePath(), newElementName);
+
+        _listQuickAccess->addQuickAccess(newElementName);
+        _listFolderContents->clear();
+        displayContent(_currentPath);
+        this->show();
+
+        return;
+    }
+
+    QMessageBox::warning(0, "Error", "Element couldn't be renamed.");
+    return;
+}
+
+void MainWindow::renameElement()
+{
+    QString path = _currentPath + _listFolderContents->currentItem()->text();
+    QFile file(path);
+    QFileInfo fileInfo(file);
+    if (fileInfo.exists() && fileInfo.isFile())
+    {
+        _beforeRenameFile = path;
+        this->close();
+        _wndRenameFile->show();
+
+        emit signRenameFile(_currentPath + _listFolderContents->currentItem()->text());
+        return;
+    }
+
+    if (fileInfo.exists() && fileInfo.isDir())
+    {
+        _beforeRenameFile = path + "/";
+
+        this->close();
+        _wndRenameFolder->show();
+
+        emit signRenameFolder(path + "/");
+        return;
+    }
+
+    QMessageBox::warning(0, "Error", "Element couldn't be renamed.");
+    return;
+}
+
+void MainWindow::copyElement()
+{
+    _copyPath = _currentPath + _listFolderContents->currentItem()->text();
+    if (!_actInsert->isEnabled())
+        _actInsert->setEnabled(true);
+}
+
+void MainWindow::insertElement()
+{
+    QFile file(_copyPath);
+    QFileInfo fileInfo(file);
+
+    if (file.exists() && fileInfo.isFile())
+    {
+        int i = 1;
+        QString path = _currentPath + fileInfo.baseName() + " - copy." + fileInfo.suffix();
+        QFile file(path);
+        while (file.exists())
+        {
+            path = QString(_currentPath + fileInfo.baseName() + " - copy(%1)." + fileInfo.suffix()).arg(i);
+            file.setFileName(path);
+            ++i;
+        }
+
+        bool copy = file.copy(_copyPath, path);
+        if (!copy)
+        {
+            QMessageBox::warning(0, "Error", "File couldn't be copied.");
+            return;
+        }
+
+        _listFolderContents->clear();
+        displayContent(_currentPath);
+
+        return;
+    }
+
+    if (fileInfo.exists() && fileInfo.isDir())
+    {
+        int i = 1;
+        QString path = _currentPath + fileInfo.fileName() + " - copy";
+        QDir dir(path);
+        while (dir.exists())
+        {
+            path = QString(_currentPath + fileInfo.fileName() + " - copy(%1)").arg(i);
+            dir.setPath(path);
+            ++i;
+        }
+
+        bool copy = copyDir(_copyPath, dir.absolutePath());
+        if (!copy)
+        {
+            QMessageBox::warning(0, "Error", "Folder couldn't be copied.");
+            return;
+        }
+
+        _listFolderContents->clear();
+        displayContent(_currentPath);
+
+        return;
+    }
+
+    QMessageBox::warning(0, "Error", "The item could not be copied.");
+    return;
 }
 
 void MainWindow::fixFolder()
@@ -183,11 +351,14 @@ void MainWindow::showContextMenuContentList(const QPoint& pos)
         QMenu menu;
         menu.addAction("Create folder", this, &MainWindow::createFolder);
         menu.addAction("Create file", this, &MainWindow::createFile);
+        menu.addAction(_actInsert);
         menu.exec(_listFolderContents->mapToGlobal(pos));
     }
     else
     {
         QMenu menu;
+        menu.addAction("Rename", this, &MainWindow::renameElement);
+        menu.addAction("Copy", this, &MainWindow::copyElement);
         menu.addAction("Fix", this, &MainWindow::fixFolder);
         menu.addAction("Delete", this, &MainWindow::deleteElement);
         menu.exec(_listFolderContents->mapToGlobal(pos));
@@ -239,9 +410,6 @@ void MainWindow::moveBackFolder()
 
 void MainWindow::moveForwardFolder()
 {
-    if (!_actBackFolder->isEnabled())
-        _actBackFolder->setEnabled(true);
-
     int it = _forwardFolderPath.indexOf(_currentPath);
 
     ++it;
@@ -257,6 +425,9 @@ void MainWindow::moveForwardFolder()
         QMessageBox::warning(0, "Error", "The directory was not found.");
         return;
     }
+
+    if (!_actBackFolder->isEnabled())
+        _actBackFolder->setEnabled(true);
 
     if (it == _forwardFolderPath.size() - 1 && _actForwardFolder->isEnabled())
         _actForwardFolder->setEnabled(false);
@@ -346,6 +517,10 @@ void MainWindow::deleteElement()
     QFileInfo infoFile(file);
     if (file.exists() && infoFile.isFile())
     {
+        int check = _listQuickAccess->getNumRow(path);
+        if (check != -1)
+            _listQuickAccess->removeQuickAccess(check);
+
         file.remove();
 
         QListWidgetItem *item = _listFolderContents->item(_listFolderContents->currentRow());
@@ -355,13 +530,20 @@ void MainWindow::deleteElement()
             return;
         }
         _listFolderContents->takeItem(_listFolderContents->currentRow());
+        _listFolderContents->clearSelection();
+
         return;
     }
 
+    path += "/";
     QDir dir(path);
     QFileInfo infoDir(path);
     if (dir.exists() && infoDir.isDir())
     {
+        int check = _listQuickAccess->getNumRow(path);
+        if (check != -1)
+            _listQuickAccess->removeQuickAccess(check);
+
         dir.removeRecursively();
         QListWidgetItem *item = _listFolderContents->item(_listFolderContents->currentRow());
         if (!item)
@@ -370,6 +552,7 @@ void MainWindow::deleteElement()
             return;
         }
         _listFolderContents->takeItem(_listFolderContents->currentRow());
+        _listFolderContents->clearSelection();
 
         return;
     }
@@ -440,6 +623,41 @@ void MainWindow::rcvConnectSaveFile(QString fileName)
         _listFolderContents->addItem(new QListWidgetItem(QIcon(":resource/icons/file.png"), fileName));
 
     this->show();
+}
+
+bool MainWindow::copyDir(QString copyPath, QString insertPath)
+{
+    bool success = false;
+    QDir sourceDir(copyPath);
+
+    if(!sourceDir.exists())
+        return false;
+
+    QDir destDir(insertPath);
+    if(!destDir.exists())
+        destDir.mkdir(insertPath);
+
+    QStringList files = sourceDir.entryList(QDir::Files);
+    for(int i = 0; i< files.count(); i++) {
+        QString srcName = copyPath + QDir::separator() + files[i];
+        QString destName = insertPath + QDir::separator() + files[i];
+        success = QFile::copy(srcName, destName);
+        if(!success)
+            return false;
+    }
+
+    files.clear();
+    files = sourceDir.entryList(QDir::AllDirs | QDir::NoDotAndDotDot);
+    for(int i = 0; i< files.count(); i++)
+    {
+        QString srcName = copyPath + QDir::separator() + files[i];
+        QString destName = insertPath + QDir::separator() + files[i];
+        success = copyDir(srcName, destName);
+        if(!success)
+            return false;
+    }
+
+    return true;
 }
 
 void MainWindow::displayContent(QString path)

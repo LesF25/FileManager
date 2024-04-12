@@ -14,14 +14,16 @@ SOURCES += \
     loginwindow.cpp \
     main.cpp \
     mainwindow.cpp \
-    proxy.cpp
+    proxy.cpp \
+    renamewindows.cpp
 
 HEADERS += \
     createwindows.h \
     filecontentwindow.h \
     loginwindow.h \
     mainwindow.h \
-    proxy.h
+    proxy.h \
+    renamewindows.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

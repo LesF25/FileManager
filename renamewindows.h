@@ -1,5 +1,4 @@
 #pragma once
-
 #include <QWidget>
 #include <QLineEdit>
 #include <QComboBox>
@@ -7,32 +6,35 @@
 #include <QPushButton>
 #include <QString>
 #include <QCloseEvent>
+#include <QDir>
+#include <QFile>
 
-class CreateFileWindow : public QWidget
+
+class RenameFileWindow : public QWidget
 {
     Q_OBJECT
 
 public:
-    CreateFileWindow(QWidget *parent = nullptr);
-    ~CreateFileWindow();
+    RenameFileWindow(QWidget *parent = nullptr);
+    ~RenameFileWindow() = default;
 
 private:
     QString _path;
+    QString _extention;
     QVBoxLayout* _ltMain;
     QLineEdit* _edFileName;
-    QComboBox* _cboxFileExtension;
     QPushButton* _btCancel;
-    QPushButton* _btCreateFile;
+    QPushButton* _btRenameFile;
 
 private:
     void closeEvent(QCloseEvent*);
 
 signals:
-    void signCreateFile(QString);
+    void signRenameFile(QString);
     void signCloseWindow();
 
 private slots:
-    void createFile();
+    void renameFile();
     void cancel();
 
 public slots:
@@ -42,30 +44,30 @@ public slots:
 
 
 
-class CreateFolderWindow : public QWidget
+class RenameFolderWindow : public QWidget
 {
     Q_OBJECT
 
 public:
-    CreateFolderWindow(QWidget *parent = nullptr);
-    ~CreateFolderWindow();
+    RenameFolderWindow(QWidget *parent = nullptr);
+    ~RenameFolderWindow() = default;
 
 private:
     QString _path;
     QVBoxLayout* _ltMain;
     QLineEdit* _edFolderName;
     QPushButton* _btCancel;
-    QPushButton* _btCreateFolder;
+    QPushButton* _btRenameFolder;
 
 private:
     void closeEvent(QCloseEvent*);
 
 signals:
-    void signCreateFolder(QString);
+    void signRenameFolder(QString);
     void signCloseWindow();
 
 private slots:
-    void createFolder();
+    void renameFolder();
     void cancel();
 
 public slots:

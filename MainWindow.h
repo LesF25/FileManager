@@ -1,6 +1,7 @@
 #pragma once
 #include "filecontentwindow.h"
 #include "createwindows.h"
+#include "renamewindows.h"
 
 #include <QWidget>
 #include <QListWidget>
@@ -11,6 +12,8 @@
 #include <QList>
 #include <QToolBar>
 #include <QAction>
+#include <QMessageBox>
+#include <QMenu>
 
 #include <QDir>
 #include <QFile>
@@ -28,6 +31,8 @@ public:
 
 private:
     QString _username;
+    QString _copyPath;
+    QString _beforeRenameFile;
     QString _currentPath;
     QList <QString> _forwardFolderPath;
     QList <QString> _backFolderPath;
@@ -46,9 +51,13 @@ private:
     QAction* _actExitAccount;
     QAction* _actDownload;
 
+    QAction* _actInsert;
+
     FileContentWindow* _wndFileContent;
     CreateFileWindow* _wndCreateFile;
     CreateFolderWindow* _wndCreateFolder;
+    RenameFileWindow* _wndRenameFile;
+    RenameFolderWindow* _wndRenameFolder;
 
 signals:
     void signSendCurrentFile(QString);
@@ -58,6 +67,8 @@ signals:
     void signCreateFolder(QString);
     void signQuickMoveFolder(int);
     void signExitAccount();
+    void signRenameFile(QString);
+    void signRenameFolder(QString);
 
 private slots:
     void createFile();
@@ -79,14 +90,19 @@ private slots:
     void clearChoiceQuickList();
     void showContextMenuQuickList(const QPoint& pos);
     void fixFolder();
+    void copyElement();
+    void insertElement();
+    void renameElement();
 
     void rcvConnectSaveFile(QString);
     void rcvConnectQuickAccess(QString);
+    void rcvConnectRename(QString);
     void setAccessMainWindow() {this->show();}
     void detachFolder();
 
 private:
     void displayContent(QString);
+    bool copyDir(QString, QString);
 };
 
 
@@ -123,7 +139,7 @@ public:
         QDir dir(pathAbs);
         QFileInfo dirInfo(dir.absolutePath());
 
-        if (dir.exists() && dirInfo.isDir())
+        if (dirInfo.exists() && dirInfo.isDir())
         {
             _quickAccessToFolders.push_back(pathAbs);
             this->addItem(new QListWidgetItem(QIcon(":resource/icons/folder.png"), dirInfo.fileName()));
@@ -138,7 +154,6 @@ public:
         this->takeItem(index);
     }
 
-private:
     bool search(QString path)
     {
         int it = _quickAccessToFolders.indexOf(path);
@@ -146,6 +161,15 @@ private:
             return false;
 
         return true;
+    }
+
+    int getNumRow(QString path)
+    {
+        if (!search(path))
+            return -1;
+
+        int it = _quickAccessToFolders.indexOf(path);
+        return it;
     }
 
 signals:
